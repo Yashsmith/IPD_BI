@@ -1,0 +1,866 @@
+"""
+Experimental Methodology Framework for GRPO-GRPO-P Research
+Comprehensive experimental design for rigorous academic evaluation
+"""
+
+import sys
+import os
+import numpy as np
+import pandas as pd
+from typing import Dict, List, Tuple, Optional, Any, Union, Callable
+from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+import logging
+import json
+from datetime import datetime
+from collections import defaultdict
+import itertools
+from pathlib import Path
+
+# Add src to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
+from src.evaluation.research_evaluator import RecommendationEvaluator, EvaluationMetrics, StatisticalAnalyzer
+from src.evaluation.baseline_methods import BaselineRecommender, create_all_baselines
+from src.agents.hybrid_system import HybridRecommendationSystem, SystemUser
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ExperimentConfig:
+    """Configuration for a single experiment"""
+    experiment_name: str
+    method_name: str
+    hyperparameters: Dict[str, Any]
+    dataset_config: Dict[str, Any]
+    evaluation_config: Dict[str, Any]
+    random_seed: int = 42
+
+@dataclass
+class DatasetSplit:
+    """Train/validation/test split for experiments"""
+    train_users: List[str]
+    val_users: List[str]
+    test_users: List[str]
+    train_data: Dict[str, Any]
+    val_data: Dict[str, Any]
+    test_data: Dict[str, Any]
+    split_timestamp: str
+
+@dataclass
+class ExperimentRun:
+    """Results from a single experimental run"""
+    experiment_config: ExperimentConfig
+    run_id: int
+    fold_id: Optional[int]  # For cross-validation
+    train_time: float
+    test_time: float
+    memory_usage: float
+    test_metrics: EvaluationMetrics
+    val_metrics: Optional[EvaluationMetrics]
+    detailed_results: Dict[str, Any]
+    timestamp: str
+    status: str  # "completed", "failed", "running"
+    error_message: Optional[str] = None
+
+class ExperimentalFramework:
+    """
+    Comprehensive experimental framework for recommendation system research
+    Handles dataset preparation, cross-validation, hyperparameter tuning, and evaluation
+    """
+    
+    def __init__(self, 
+                 results_dir: str = "experimental_results",
+                 random_seed: int = 42):
+        """
+        Initialize experimental framework
+        
+        Args:
+            results_dir: Directory to store experimental results
+            random_seed: Global random seed for reproducibility
+        """
+        
+        self.results_dir = Path(results_dir)
+        self.results_dir.mkdir(exist_ok=True)
+        
+        self.random_seed = random_seed
+        np.random.seed(random_seed)
+        
+        # Initialize components
+        self.evaluator = RecommendationEvaluator()
+        self.statistical_analyzer = StatisticalAnalyzer()
+        
+        # Experiment tracking
+        self.experiment_results: List[ExperimentRun] = []
+        self.baseline_methods = create_all_baselines()
+        
+        logger.info(f"ExperimentalFramework initialized with results dir: {results_dir}")
+    
+    def create_dataset_splits(self, 
+                            user_data: Dict[str, Any],
+                            split_ratios: Tuple[float, float, float] = (0.6, 0.2, 0.2),
+                            temporal_split: bool = False,
+                            stratify_by: Optional[str] = None) -> List[DatasetSplit]:
+        """
+        Create train/validation/test splits for experiments
+        
+        Args:
+            user_data: Dictionary with user interaction data
+            split_ratios: (train, val, test) ratios
+            temporal_split: Whether to split by time (chronological)
+            stratify_by: Attribute to stratify split by (e.g., user_type)
+            
+        Returns:
+            List of DatasetSplit objects
+        """
+        
+        user_ids = list(user_data.keys())
+        n_users = len(user_ids)
+        
+        train_ratio, val_ratio, test_ratio = split_ratios
+        
+        if temporal_split:
+            # Sort users by their first interaction timestamp
+            def get_first_timestamp(user_id):
+                interactions = user_data[user_id].get('interactions', [])
+                if interactions:
+                    return min(interaction.get('timestamp', '9999-12-31') for interaction in interactions)
+                return '9999-12-31'
+            
+            user_ids.sort(key=get_first_timestamp)
+        else:
+            # Random shuffle for random split
+            np.random.shuffle(user_ids)
+        
+        # Calculate split indices
+        train_end = int(n_users * train_ratio)
+        val_end = int(n_users * (train_ratio + val_ratio))
+        
+        train_users = user_ids[:train_end]
+        val_users = user_ids[train_end:val_end]
+        test_users = user_ids[val_end:]
+        
+        # Create data splits
+        train_data = {user_id: user_data[user_id] for user_id in train_users}
+        val_data = {user_id: user_data[user_id] for user_id in val_users}
+        test_data = {user_id: user_data[user_id] for user_id in test_users}
+        
+        split = DatasetSplit(
+            train_users=train_users,
+            val_users=val_users,
+            test_users=test_users,
+            train_data=train_data,
+            val_data=val_data,
+            test_data=test_data,
+            split_timestamp=datetime.now().isoformat()
+        )
+        
+        logger.info(f"Created dataset split: {len(train_users)} train, {len(val_users)} val, {len(test_users)} test")
+        
+        return [split]
+    
+    def create_cross_validation_splits(self, 
+                                     user_data: Dict[str, Any],
+                                     n_folds: int = 5,
+                                     stratify_by: Optional[str] = None) -> List[DatasetSplit]:
+        """
+        Create k-fold cross-validation splits
+        
+        Args:
+            user_data: Dictionary with user interaction data
+            n_folds: Number of folds for cross-validation
+            stratify_by: Attribute to stratify by
+            
+        Returns:
+            List of DatasetSplit objects (one per fold)
+        """
+        
+        user_ids = list(user_data.keys())
+        n_users = len(user_ids)
+        
+        # Shuffle users
+        np.random.shuffle(user_ids)
+        
+        # Create folds
+        fold_size = n_users // n_folds
+        splits = []
+        
+        for fold in range(n_folds):
+            # Test set for this fold
+            test_start = fold * fold_size
+            test_end = (fold + 1) * fold_size if fold < n_folds - 1 else n_users
+            test_users = user_ids[test_start:test_end]
+            
+            # Training + validation set
+            remaining_users = user_ids[:test_start] + user_ids[test_end:]
+            
+            # Split remaining into train and validation
+            val_size = len(remaining_users) // 5  # 20% for validation
+            val_users = remaining_users[:val_size]
+            train_users = remaining_users[val_size:]
+            
+            # Create data splits
+            train_data = {user_id: user_data[user_id] for user_id in train_users}
+            val_data = {user_id: user_data[user_id] for user_id in val_users}
+            test_data = {user_id: user_data[user_id] for user_id in test_users}
+            
+            split = DatasetSplit(
+                train_users=train_users,
+                val_users=val_users,
+                test_users=test_users,
+                train_data=train_data,
+                val_data=val_data,
+                test_data=test_data,
+                split_timestamp=datetime.now().isoformat()
+            )
+            
+            splits.append(split)
+        
+        logger.info(f"Created {n_folds}-fold cross-validation splits")
+        return splits
+    
+    def generate_hyperparameter_grid(self, 
+                                   method_name: str,
+                                   param_ranges: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
+        """
+        Generate hyperparameter grid for grid search
+        
+        Args:
+            method_name: Name of the method
+            param_ranges: Dictionary with parameter names and value ranges
+            
+        Returns:
+            List of hyperparameter combinations
+        """
+        
+        param_names = list(param_ranges.keys())
+        param_values = list(param_ranges.values())
+        
+        # Generate all combinations
+        combinations = list(itertools.product(*param_values))
+        
+        # Convert to list of dictionaries
+        hyperparameter_grid = []
+        for combination in combinations:
+            params = dict(zip(param_names, combination))
+            hyperparameter_grid.append(params)
+        
+        logger.info(f"Generated {len(hyperparameter_grid)} hyperparameter combinations for {method_name}")
+        return hyperparameter_grid
+    
+    def run_baseline_experiment(self, 
+                              baseline: BaselineRecommender,
+                              dataset_split: DatasetSplit,
+                              config: ExperimentConfig) -> ExperimentRun:
+        """
+        Run experiment with a baseline method
+        
+        Args:
+            baseline: Baseline recommendation method
+            dataset_split: Train/test split
+            config: Experiment configuration
+            
+        Returns:
+            ExperimentRun with results
+        """
+        
+        start_time = datetime.now()
+        
+        try:
+            # Convert data to format expected by baseline
+            train_matrix, user_mapping, item_mapping = self._convert_to_matrix_format(
+                dataset_split.train_data
+            )
+            
+            # Train baseline
+            train_start = datetime.now()
+            baseline.fit(train_matrix)
+            train_time = (datetime.now() - train_start).total_seconds()
+            
+            # Generate recommendations for test users
+            test_start = datetime.now()
+            test_recommendations = {}
+            test_ground_truth = {}
+            
+            for user_id in dataset_split.test_users:
+                if user_id in user_mapping:
+                    matrix_user_id = user_mapping[user_id]
+                    recommendations = baseline.recommend(matrix_user_id, n_recommendations=10)
+                    
+                    # Convert back to original item IDs and then to sectors
+                    item_ids = [item_mapping[item_idx] for item_idx, score in recommendations 
+                              if item_idx in item_mapping]
+                    
+                    # Convert item IDs to sectors using our mapping
+                    item_sectors = []
+                    for item_id in item_ids:
+                        if isinstance(item_id, str) and item_id.startswith('startup_'):
+                            try:
+                                startup_num = int(item_id.split('_')[1])
+                                if startup_num <= 25:
+                                    item_sectors.append('technology')
+                                elif startup_num <= 50:
+                                    item_sectors.append('finance')
+                                elif startup_num <= 75:
+                                    item_sectors.append('healthcare')
+                                else:
+                                    item_sectors.append('retail')
+                            except (ValueError, IndexError):
+                                # If parsing fails, default to technology
+                                item_sectors.append('technology')
+                        else:
+                            # For non-startup items, map based on item index
+                            try:
+                                if isinstance(item_id, str) and item_id.startswith('item_'):
+                                    item_num = int(item_id.split('_')[1])
+                                elif isinstance(item_id, int):
+                                    item_num = item_id
+                                else:
+                                    item_num = 0
+                                    
+                                if item_num <= 25:
+                                    item_sectors.append('technology')
+                                elif item_num <= 50:
+                                    item_sectors.append('finance')
+                                elif item_num <= 75:
+                                    item_sectors.append('healthcare')
+                                else:
+                                    item_sectors.append('retail')
+                            except (ValueError, IndexError):
+                                item_sectors.append('technology')
+                    
+                    # Remove duplicates while preserving order
+                    seen = set()
+                    unique_sectors = []
+                    for sector in item_sectors:
+                        if sector not in seen:
+                            seen.add(sector)
+                            unique_sectors.append(sector)
+                    
+                    test_recommendations[user_id] = unique_sectors
+                    
+                    # Get ground truth
+                    user_data = dataset_split.test_data[user_id]
+                    relevant_items = self._extract_relevant_sectors(user_data)
+                    test_ground_truth[user_id] = relevant_items
+            
+            test_time = (datetime.now() - test_start).total_seconds()
+            
+            # Evaluate
+            test_metrics = self._evaluate_recommendations(test_recommendations, test_ground_truth)
+            
+            # Create experiment run
+            experiment_run = ExperimentRun(
+                experiment_config=config,
+                run_id=len(self.experiment_results),
+                fold_id=None,
+                train_time=train_time,
+                test_time=test_time,
+                memory_usage=0.0,  # Could implement memory tracking
+                test_metrics=test_metrics,
+                val_metrics=None,
+                detailed_results={
+                    'n_train_users': len(dataset_split.train_users),
+                    'n_test_users': len(dataset_split.test_users),
+                    'baseline_name': baseline.get_name()
+                },
+                timestamp=start_time.isoformat(),
+                status="completed"
+            )
+            
+            logger.info(f"Completed baseline experiment: {baseline.get_name()}")
+            return experiment_run
+            
+        except Exception as e:
+            logger.error(f"Baseline experiment failed: {e}")
+            
+            # Return failed experiment run
+            experiment_run = ExperimentRun(
+                experiment_config=config,
+                run_id=len(self.experiment_results),
+                fold_id=None,
+                train_time=0.0,
+                test_time=0.0,
+                memory_usage=0.0,
+                test_metrics=EvaluationMetrics({}, {}, {}, 0.0, 0.0, 0.0, 0.0, 0.0),
+                val_metrics=None,
+                detailed_results={},
+                timestamp=start_time.isoformat(),
+                status="failed",
+                error_message=str(e)
+            )
+            
+            return experiment_run
+    
+    def run_grpo_grpo_p_experiment(self, 
+                                 dataset_split: DatasetSplit,
+                                 config: ExperimentConfig) -> ExperimentRun:
+        """
+        Run experiment with GRPO-GRPO-P hybrid system
+        
+        Args:
+            dataset_split: Train/test split
+            config: Experiment configuration
+            
+        Returns:
+            ExperimentRun with results
+        """
+        
+        start_time = datetime.now()
+        
+        try:
+            # Initialize hybrid system
+            hybrid_system = HybridRecommendationSystem()
+            
+            # Register training users
+            train_start = datetime.now()
+            for user_id in dataset_split.train_users:
+                user_data = dataset_split.train_data[user_id]
+                system_user = self._convert_to_system_user(user_id, user_data)
+                hybrid_system.register_user(system_user)
+                
+                # Simulate training interactions
+                self._simulate_training_interactions(hybrid_system, user_id, user_data)
+            
+            train_time = (datetime.now() - train_start).total_seconds()
+            
+            # Generate recommendations for test users
+            test_start = datetime.now()
+            test_recommendations = {}
+            test_ground_truth = {}
+            
+            for user_id in dataset_split.test_users:
+                user_data = dataset_split.test_data[user_id]
+                system_user = self._convert_to_system_user(user_id, user_data)
+                hybrid_system.register_user(system_user)
+                
+                # Get recommendations
+                recommendations = hybrid_system.get_recommendations(user_id, max_recommendations=10)
+                recommended_items = [rec.sector for rec in recommendations]  # Extract sectors
+                test_recommendations[user_id] = recommended_items
+                
+                # Get ground truth - convert startup IDs to sectors
+                relevant_items = self._extract_relevant_sectors(user_data)
+                test_ground_truth[user_id] = relevant_items
+            
+            test_time = (datetime.now() - test_start).total_seconds()
+            
+            # Evaluate
+            test_metrics = self._evaluate_recommendations(test_recommendations, test_ground_truth)
+            
+            # Get system statistics
+            system_stats = hybrid_system.get_system_stats()
+            
+            # Create experiment run
+            experiment_run = ExperimentRun(
+                experiment_config=config,
+                run_id=len(self.experiment_results),
+                fold_id=None,
+                train_time=train_time,
+                test_time=test_time,
+                memory_usage=0.0,
+                test_metrics=test_metrics,
+                val_metrics=None,
+                detailed_results={
+                    'n_train_users': len(dataset_split.train_users),
+                    'n_test_users': len(dataset_split.test_users),
+                    'system_stats': system_stats,
+                    'hyperparameters': config.hyperparameters
+                },
+                timestamp=start_time.isoformat(),
+                status="completed"
+            )
+            
+            logger.info(f"Completed GRPO-GRPO-P experiment")
+            return experiment_run
+            
+        except Exception as e:
+            logger.error(f"GRPO-GRPO-P experiment failed: {e}")
+            
+            experiment_run = ExperimentRun(
+                experiment_config=config,
+                run_id=len(self.experiment_results),
+                fold_id=None,
+                train_time=0.0,
+                test_time=0.0,
+                memory_usage=0.0,
+                test_metrics=EvaluationMetrics({}, {}, {}, 0.0, 0.0, 0.0, 0.0, 0.0),
+                val_metrics=None,
+                detailed_results={},
+                timestamp=start_time.isoformat(),
+                status="failed",
+                error_message=str(e)
+            )
+            
+            return experiment_run
+    
+    def run_ablation_study(self, 
+                          dataset_splits: List[DatasetSplit],
+                          ablation_configs: List[Dict[str, Any]]) -> List[ExperimentRun]:
+        """
+        Run ablation study to understand component contributions
+        
+        Args:
+            dataset_splits: List of dataset splits
+            ablation_configs: Different configurations to test
+            
+        Returns:
+            List of ExperimentRun results
+        """
+        
+        ablation_results = []
+        
+        for config in ablation_configs:
+            config_name = config.get('name', 'unnamed_ablation')
+            logger.info(f"Running ablation: {config_name}")
+            
+            for split_idx, split in enumerate(dataset_splits):
+                experiment_config = ExperimentConfig(
+                    experiment_name=f"ablation_{config_name}",
+                    method_name="GRPO-GRPO-P-Ablation",
+                    hyperparameters=config,
+                    dataset_config={},
+                    evaluation_config={}
+                )
+                
+                result = self.run_grpo_grpo_p_experiment(split, experiment_config)
+                result.fold_id = split_idx
+                ablation_results.append(result)
+        
+        return ablation_results
+    
+    def run_hyperparameter_search(self, 
+                                dataset_splits: List[DatasetSplit],
+                                param_grid: List[Dict[str, Any]],
+                                method_name: str = "GRPO-GRPO-P") -> List[ExperimentRun]:
+        """
+        Run hyperparameter search
+        
+        Args:
+            dataset_splits: List of dataset splits
+            param_grid: Grid of hyperparameters to search
+            method_name: Name of the method
+            
+        Returns:
+            List of ExperimentRun results
+        """
+        
+        search_results = []
+        
+        for param_idx, params in enumerate(param_grid):
+            logger.info(f"Running hyperparameter config {param_idx + 1}/{len(param_grid)}: {params}")
+            
+            for split_idx, split in enumerate(dataset_splits):
+                experiment_config = ExperimentConfig(
+                    experiment_name=f"hyperparam_search_{param_idx}",
+                    method_name=method_name,
+                    hyperparameters=params,
+                    dataset_config={},
+                    evaluation_config={}
+                )
+                
+                result = self.run_grpo_grpo_p_experiment(split, experiment_config)
+                result.fold_id = split_idx
+                search_results.append(result)
+        
+        return search_results
+    
+    def compare_methods(self, 
+                       method_results: Dict[str, List[ExperimentRun]],
+                       primary_metric: str = "ndcg_at_k") -> Dict[str, Any]:
+        """
+        Compare different methods statistically
+        
+        Args:
+            method_results: Dictionary mapping method names to experiment results
+            primary_metric: Primary metric for comparison
+            
+        Returns:
+            Dictionary with comparison results
+        """
+        
+        comparison_results = {}
+        method_names = list(method_results.keys())
+        
+        # Extract metric values for each method
+        method_scores = {}
+        for method_name, results in method_results.items():
+            scores = []
+            for result in results:
+                if result.status == "completed":
+                    metric_value = getattr(result.test_metrics, primary_metric, {})
+                    if isinstance(metric_value, dict) and 5 in metric_value:
+                        scores.append(metric_value[5])  # Use @5 metric
+                    elif isinstance(metric_value, (int, float)):
+                        scores.append(metric_value)
+            method_scores[method_name] = scores
+        
+        # Pairwise comparisons
+        pairwise_comparisons = {}
+        for i in range(len(method_names)):
+            for j in range(i + 1, len(method_names)):
+                method_a = method_names[i]
+                method_b = method_names[j]
+                
+                scores_a = method_scores[method_a]
+                scores_b = method_scores[method_b]
+                
+                if len(scores_a) > 0 and len(scores_b) > 0:
+                    comparison = self.statistical_analyzer.compare_methods(
+                        scores_a, scores_b, method_a, method_b, primary_metric
+                    )
+                    
+                    pair_key = f"{method_a}_vs_{method_b}"
+                    pairwise_comparisons[pair_key] = comparison
+        
+        # Summary statistics
+        summary_stats = {}
+        for method_name, scores in method_scores.items():
+            if len(scores) > 0:
+                summary_stats[method_name] = {
+                    'mean': np.mean(scores),
+                    'std': np.std(scores),
+                    'median': np.median(scores),
+                    'min': np.min(scores),
+                    'max': np.max(scores),
+                    'n_runs': len(scores)
+                }
+        
+        comparison_results = {
+            'summary_statistics': summary_stats,
+            'pairwise_comparisons': pairwise_comparisons,
+            'primary_metric': primary_metric,
+            'method_scores': method_scores
+        }
+        
+        return comparison_results
+    
+    def save_experiment_results(self, results: List[ExperimentRun], filename: str):
+        """Save experiment results to file"""
+        
+        results_path = self.results_dir / filename
+        
+        # Convert to serializable format
+        serializable_results = []
+        for result in results:
+            result_dict = {
+                'experiment_config': {
+                    'experiment_name': result.experiment_config.experiment_name,
+                    'method_name': result.experiment_config.method_name,
+                    'hyperparameters': result.experiment_config.hyperparameters,
+                    'random_seed': result.experiment_config.random_seed
+                },
+                'run_id': result.run_id,
+                'fold_id': result.fold_id,
+                'train_time': result.train_time,
+                'test_time': result.test_time,
+                'memory_usage': result.memory_usage,
+                'test_metrics': {
+                    'precision_at_k': result.test_metrics.precision_at_k,
+                    'recall_at_k': result.test_metrics.recall_at_k,
+                    'ndcg_at_k': result.test_metrics.ndcg_at_k,
+                    'map_score': result.test_metrics.map_score,
+                    'mrr_score': result.test_metrics.mrr_score,
+                    'diversity': result.test_metrics.diversity,
+                    'novelty': result.test_metrics.novelty,
+                    'coverage': result.test_metrics.coverage
+                },
+                'timestamp': result.timestamp,
+                'status': result.status,
+                'error_message': result.error_message
+            }
+            serializable_results.append(result_dict)
+        
+        with open(results_path, 'w') as f:
+            json.dump(serializable_results, f, indent=2)
+        
+        logger.info(f"Saved {len(results)} experiment results to {results_path}")
+    
+    def _convert_to_matrix_format(self, user_data: Dict[str, Any]) -> Tuple[np.ndarray, Dict, Dict]:
+        """Convert user data to matrix format for baselines"""
+        
+        # Extract all users and items
+        all_users = list(user_data.keys())
+        all_items = set()
+        
+        for user_id, data in user_data.items():
+            interactions = data.get('interactions', [])
+            for interaction in interactions:
+                all_items.add(interaction.get('item_id', ''))
+        
+        all_items = list(all_items)
+        
+        # Create mappings
+        user_mapping = {user_id: idx for idx, user_id in enumerate(all_users)}
+        item_mapping = {item_id: idx for idx, item_id in enumerate(all_items)}
+        reverse_item_mapping = {idx: item_id for item_id, idx in item_mapping.items()}
+        
+        # Create matrix
+        matrix = np.zeros((len(all_users), len(all_items)))
+        
+        for user_id, data in user_data.items():
+            user_idx = user_mapping[user_id]
+            interactions = data.get('interactions', [])
+            
+            for interaction in interactions:
+                item_id = interaction.get('item_id', '')
+                if item_id in item_mapping:
+                    item_idx = item_mapping[item_id]
+                    rating = interaction.get('rating', 1.0)
+                    matrix[user_idx, item_idx] = rating
+        
+        return matrix, user_mapping, reverse_item_mapping
+    
+    def _convert_to_system_user(self, user_id: str, user_data: Dict[str, Any]) -> SystemUser:
+        """Convert user data to SystemUser object"""
+        
+        return SystemUser(
+            user_id=user_id,
+            role=user_data.get('role', 'investor'),
+            sectors=user_data.get('sectors', ['technology', 'finance']),
+            location=user_data.get('location', 'mumbai'),
+            capital_range=user_data.get('capital_range', 'medium'),
+            risk_appetite=user_data.get('risk_appetite', 'moderate'),
+            experience_level=user_data.get('experience_level', 'intermediate')
+        )
+    
+    def _simulate_training_interactions(self, system: HybridRecommendationSystem, 
+                                      user_id: str, user_data: Dict[str, Any]):
+        """Simulate training interactions for a user"""
+        
+        interactions = user_data.get('interactions', [])
+        for interaction in interactions:
+            feedback_score = interaction.get('rating', 1.0)
+            # Normalize to [-1, 1] range
+            feedback_score = (feedback_score - 2.5) / 2.5
+            
+            system.provide_feedback(
+                user_id=user_id,
+                recommendation_id=interaction.get('item_id', ''),
+                feedback_type='rated',
+                feedback_score=feedback_score
+            )
+    
+    def _extract_relevant_items(self, user_data: Dict[str, Any]) -> List[str]:
+        """Extract relevant items from user data"""
+        
+        interactions = user_data.get('interactions', [])
+        relevant_items = []
+        
+        for interaction in interactions:
+            rating = interaction.get('rating', 0.0)
+            if rating >= 3.0:  # Consider rating >= 3 as relevant
+                relevant_items.append(interaction.get('item_id', ''))
+        
+        return relevant_items
+    
+    def _extract_relevant_sectors(self, user_data: Dict[str, Any]) -> List[str]:
+        """Extract relevant sectors from user data by mapping high-rated startups to sectors"""
+        
+        interactions = user_data.get('interactions', [])
+        relevant_sectors = set()
+        
+        # Simple mapping: startup ID to sector (in real system this would be from a database)
+        startup_to_sector = {
+            'startup_1': 'technology', 'startup_2': 'finance', 'startup_3': 'healthcare',
+            'startup_4': 'technology', 'startup_5': 'finance', 'startup_6': 'healthcare', 
+            'startup_7': 'retail', 'startup_8': 'technology', 'startup_9': 'finance',
+            'startup_10': 'healthcare', 'startup_11': 'technology', 'startup_12': 'finance',
+            'startup_13': 'healthcare', 'startup_14': 'retail', 'startup_15': 'technology',
+            'startup_16': 'finance', 'startup_17': 'healthcare', 'startup_18': 'retail',
+            'startup_19': 'technology', 'startup_20': 'finance', 'startup_21': 'healthcare',
+            'startup_22': 'retail', 'startup_23': 'technology', 'startup_24': 'finance',
+            'startup_25': 'healthcare', 'startup_26': 'retail', 'startup_27': 'technology',
+            'startup_28': 'finance', 'startup_29': 'healthcare', 'startup_30': 'retail',
+            'startup_31': 'technology', 'startup_32': 'finance', 'startup_33': 'healthcare',
+            'startup_34': 'retail', 'startup_35': 'technology', 'startup_36': 'finance',
+            'startup_37': 'healthcare', 'startup_38': 'retail', 'startup_39': 'technology',
+            'startup_40': 'finance', 'startup_41': 'healthcare', 'startup_42': 'retail',
+            'startup_43': 'technology', 'startup_44': 'finance', 'startup_45': 'healthcare',
+            'startup_46': 'retail', 'startup_47': 'technology', 'startup_48': 'finance',
+            'startup_49': 'healthcare', 'startup_50': 'retail', 'startup_51': 'technology',
+            'startup_52': 'finance', 'startup_53': 'healthcare', 'startup_54': 'retail',
+            'startup_55': 'technology', 'startup_56': 'finance', 'startup_57': 'healthcare',
+            'startup_58': 'retail', 'startup_59': 'technology', 'startup_60': 'finance',
+            'startup_61': 'healthcare', 'startup_62': 'retail', 'startup_63': 'technology',
+            'startup_64': 'finance', 'startup_65': 'healthcare', 'startup_66': 'retail',
+            'startup_67': 'technology', 'startup_68': 'finance', 'startup_69': 'healthcare',
+            'startup_70': 'retail', 'startup_71': 'technology', 'startup_72': 'finance',
+            'startup_73': 'healthcare', 'startup_74': 'retail', 'startup_75': 'technology',
+            'startup_76': 'finance', 'startup_77': 'healthcare', 'startup_78': 'retail',
+            'startup_79': 'technology', 'startup_80': 'finance', 'startup_81': 'healthcare',
+            'startup_82': 'retail', 'startup_83': 'technology', 'startup_84': 'finance',
+            'startup_85': 'healthcare', 'startup_86': 'retail', 'startup_87': 'technology',
+            'startup_88': 'finance', 'startup_89': 'healthcare', 'startup_90': 'retail',
+            'startup_91': 'technology', 'startup_92': 'finance', 'startup_93': 'healthcare',
+            'startup_94': 'retail', 'startup_95': 'technology', 'startup_96': 'finance',
+            'startup_97': 'healthcare', 'startup_98': 'retail', 'startup_99': 'technology',
+            'startup_100': 'finance'
+        }
+        
+        for interaction in interactions:
+            rating = interaction.get('rating', 0.0)
+            if rating >= 3.0:  # Consider rating >= 3 as relevant
+                startup_id = interaction.get('item_id', '')
+                sector = startup_to_sector.get(startup_id, 'technology')  # Default to technology
+                relevant_sectors.add(sector)
+        
+        return list(relevant_sectors)
+    
+    def _evaluate_recommendations(self, recommendations: Dict[str, List[str]], 
+                                ground_truth: Dict[str, List[str]]) -> EvaluationMetrics:
+        """Evaluate recommendations against ground truth"""
+        
+        user_metrics = self.evaluator.evaluate_system(
+            recommendations, ground_truth, catalog_size=1000
+        )
+        
+        return self.evaluator.aggregate_metrics(user_metrics)
+
+# Example usage and testing
+if __name__ == "__main__":
+    print("🧪 Testing Experimental Framework")
+    print("=" * 50)
+    
+    # Initialize framework
+    framework = ExperimentalFramework()
+    
+    # Create sample user data
+    sample_user_data = {}
+    for user_id in range(50):
+        sample_user_data[f"user_{user_id}"] = {
+            'role': np.random.choice(['entrepreneur', 'investor', 'business_owner']),
+            'sectors': ['technology', 'finance'],
+            'risk_appetite': np.random.choice(['low', 'moderate', 'high']),
+            'interactions': [
+                {
+                    'item_id': f"item_{np.random.randint(0, 20)}",
+                    'rating': np.random.choice([1, 2, 3, 4, 5]),
+                    'timestamp': '2024-01-01'
+                }
+                for _ in range(np.random.randint(5, 15))
+            ]
+        }
+    
+    print(f"📊 Created sample dataset with {len(sample_user_data)} users")
+    
+    # Test dataset splitting
+    splits = framework.create_dataset_splits(sample_user_data)
+    print(f"✅ Created dataset split: {len(splits[0].train_users)} train, {len(splits[0].test_users)} test")
+    
+    # Test cross-validation splits
+    cv_splits = framework.create_cross_validation_splits(sample_user_data, n_folds=3)
+    print(f"✅ Created {len(cv_splits)} cross-validation folds")
+    
+    # Test hyperparameter grid generation
+    param_grid = framework.generate_hyperparameter_grid(
+        "GRPO-GRPO-P",
+        {
+            'learning_rate': [0.01, 0.05, 0.1],
+            'exploration_rate': [0.1, 0.2, 0.3]
+        }
+    )
+    print(f"✅ Generated hyperparameter grid with {len(param_grid)} combinations")
+    
+    print("\n🎯 Experimental Framework Ready!")
+    print("Ready to run comprehensive research experiments!")

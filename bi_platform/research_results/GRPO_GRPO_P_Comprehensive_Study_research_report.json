@@ -1,0 +1,62 @@
+{
+  "experiment_metadata": {
+    "experiment_name": "GRPO_GRPO_P_Comprehensive_Study",
+    "timestamp": "2025-08-15T22:54:22.590023",
+    "configuration": {
+      "cross_validation_folds": 5,
+      "test_split_ratio": 0.2,
+      "random_seed": 42,
+      "hyperparameter_search": true,
+      "ablation_study": true,
+      "baseline_comparison": true,
+      "statistical_analysis": true
+    }
+  },
+  "dataset_summary": {
+    "n_users": 200,
+    "n_items": 100,
+    "n_interactions": 2495,
+    "sparsity": 0.87525,
+    "avg_interactions_per_user": 12.475
+  },
+  "methodology": {
+    "cross_validation_folds": 5,
+    "evaluation_metrics": [
+      "precision@k",
+      "recall@k",
+      "ndcg@k",
+      "map",
+      "mrr",
+      "diversity",
+      "novelty"
+    ],
+    "baseline_methods": [
+      "PopularityBaseline",
+      "RandomBaseline",
+      "UserCollaborativeFiltering",
+      "ItemCollaborativeFiltering",
+      "MatrixFactorization",
+      "ContentBasedFiltering"
+    ],
+    "statistical_tests": [
+      "t-test",
+      "mann-whitney-u",
+      "cohen-d"
+    ]
+  },
+  "key_findings": [
+    "Dataset contains 200 users, 100 items, and 2495 interactions",
+    "Ablation study confirmed the importance of both population consensus and personal learning components"
+  ],
+  "performance_summary": {
+    "GRPO-GRPO-P": {
+      "avg_ndcg_at_5": 1.0725070731166917,
+      "std_ndcg_at_5": 0.09690512338131617,
+      "n_runs": 5
+    }
+  },
+  "recommendations": [
+    "Optimal hyperparameters identified: {'learning_rate': 0.01, 'exploration_rate': 0.1, 'population_weight': 0.5, 'personal_weight': 0.7}",
+    "Both population and personal components contribute to system performance"
+  ]
+}

@@ -1,0 +1,8 @@
+Metric,Value
+Number of Users,200
+Number of Items,100
+Total Interactions,2495
+Dataset Sparsity,0.8752
+Average Interactions per User,12.47
+Cross-Validation Folds,5
+Test Split Ratio,0.2

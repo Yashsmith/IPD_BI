@@ -1,0 +1,11 @@
+Category,Metric,Value
+Dataset,Users,200
+Dataset,Items,100
+Dataset,Interactions,2495
+Dataset,Sparsity,0.8752
+Performance,NDCG@5 (Mean),1.072507
+Performance,NDCG@5 (Std),0.096905
+Performance,Cross-Val Runs,5
+Methodology,CV Folds,5
+Methodology,Test Split,0.2
+Methodology,Hyperparameter Search,Yes

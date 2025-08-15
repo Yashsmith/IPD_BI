@@ -1,0 +1,41 @@
+{
+  "system": {
+    "name": "GRPO-GRPO-P Hybrid System",
+    "version": "1.0.0",
+    "environment": "development"
+  },
+  "grpo_agent": {
+    "learning_rate": 0.1,
+    "exploration_rate": 0.2,
+    "population_weight": 0.3,
+    "consensus_threshold": 0.6
+  },
+  "grpo_p_agent": {
+    "personal_weight": 0.7,
+    "adaptation_rate": 0.15,
+    "memory_decay": 0.95,
+    "feedback_sensitivity": 0.8
+  },
+  "arbitrator": {
+    "confidence_threshold": 0.7,
+    "hybrid_weight": 0.5,
+    "uncertainty_penalty": 0.1
+  },
+  "recommendation": {
+    "max_recommendations": 10,
+    "diversity_weight": 0.2,
+    "novelty_weight": 0.1,
+    "min_score_threshold": 0.3
+  },
+  "data": {
+    "news_sources": ["newsapi", "rss_feeds"],
+    "sectors": ["technology", "finance", "healthcare", "energy", "retail"],
+    "update_frequency": "hourly",
+    "cache_duration": 3600
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file": "logs/system.log"
+  }
+}

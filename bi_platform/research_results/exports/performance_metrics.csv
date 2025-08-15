@@ -1,0 +1,8 @@
+Method,Metric,Mean,Std,N_Runs,Category
+GRPO-GRPO-P,NDCG@5,1.072507,0.096905,5,Hybrid System
+PopularityBaseline,NDCG@5,0.0000,0.0000,5,Baseline
+RandomBaseline,NDCG@5,0.0000,0.0000,5,Baseline
+UserCollaborativeFiltering,NDCG@5,0.0000,0.0000,5,Baseline
+ItemCollaborativeFiltering,NDCG@5,0.0000,0.0000,5,Baseline
+MatrixFactorization,NDCG@5,0.0000,0.0000,5,Baseline
+ContentBasedFiltering,NDCG@5,0.0000,0.0000,5,Baseline
