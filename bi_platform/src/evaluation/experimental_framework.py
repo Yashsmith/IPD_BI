@@ -23,6 +23,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from src.evaluation.research_evaluator import RecommendationEvaluator, EvaluationMetrics, StatisticalAnalyzer
 from src.evaluation.baseline_methods import BaselineRecommender, create_all_baselines
 from src.agents.hybrid_system import HybridRecommendationSystem, SystemUser
+from .sector_mapping import get_sector_for_startup
 
 logger = logging.getLogger(__name__)
 
@@ -267,10 +268,13 @@ class ExperimentalFramework:
         start_time = datetime.now()
         
         try:
-            # Convert data to format expected by baseline
-            train_matrix, user_mapping, item_mapping = self._convert_to_matrix_format(
-                dataset_split.train_data
-            )
+            # Convert ALL data to format expected by baseline (need mappings for all users)
+            all_data = {**dataset_split.train_data, **dataset_split.test_data}
+            full_matrix, user_mapping, item_mapping = self._convert_to_matrix_format(all_data)
+            
+            # Create training matrix with only training users
+            train_user_indices = [user_mapping[uid] for uid in dataset_split.train_users if uid in user_mapping]
+            train_matrix = full_matrix[train_user_indices, :]
             
             # Train baseline
             train_start = datetime.now()
@@ -279,57 +283,32 @@ class ExperimentalFramework:
             
             # Generate recommendations for test users
             test_start = datetime.now()
-            test_recommendations = {}
-            test_ground_truth = {}
+            
+            # Dual-level baseline evaluation
+            sector_recommendations = {}
+            item_recommendations = {}
+            sector_ground_truth = {}
+            item_ground_truth = {}
             
             for user_id in dataset_split.test_users:
                 if user_id in user_mapping:
                     matrix_user_id = user_mapping[user_id]
                     recommendations = baseline.recommend(matrix_user_id, n_recommendations=10)
                     
-                    # Convert back to original item IDs and then to sectors
+                    # Convert back to original item IDs
                     item_ids = [item_mapping[item_idx] for item_idx, score in recommendations 
                               if item_idx in item_mapping]
                     
-                    # Convert item IDs to sectors using our mapping
+                    # Item-level recommendations (direct from baseline)
+                    item_recommendations[user_id] = item_ids
+                    
+                    # Convert item IDs to sectors for sector-level evaluation
+                    from .sector_mapping import get_sector_for_startup
                     item_sectors = []
                     for item_id in item_ids:
-                        if isinstance(item_id, str) and item_id.startswith('startup_'):
-                            try:
-                                startup_num = int(item_id.split('_')[1])
-                                if startup_num <= 25:
-                                    item_sectors.append('technology')
-                                elif startup_num <= 50:
-                                    item_sectors.append('finance')
-                                elif startup_num <= 75:
-                                    item_sectors.append('healthcare')
-                                else:
-                                    item_sectors.append('retail')
-                            except (ValueError, IndexError):
-                                # If parsing fails, default to technology
-                                item_sectors.append('technology')
-                        else:
-                            # For non-startup items, map based on item index
-                            try:
-                                if isinstance(item_id, str) and item_id.startswith('item_'):
-                                    item_num = int(item_id.split('_')[1])
-                                elif isinstance(item_id, int):
-                                    item_num = item_id
-                                else:
-                                    item_num = 0
-                                    
-                                if item_num <= 25:
-                                    item_sectors.append('technology')
-                                elif item_num <= 50:
-                                    item_sectors.append('finance')
-                                elif item_num <= 75:
-                                    item_sectors.append('healthcare')
-                                else:
-                                    item_sectors.append('retail')
-                            except (ValueError, IndexError):
-                                item_sectors.append('technology')
+                        item_sectors.append(get_sector_for_startup(item_id))
                     
-                    # Remove duplicates while preserving order
+                    # Remove duplicates while preserving order for sector-level
                     seen = set()
                     unique_sectors = []
                     for sector in item_sectors:
@@ -337,17 +316,21 @@ class ExperimentalFramework:
                             seen.add(sector)
                             unique_sectors.append(sector)
                     
-                    test_recommendations[user_id] = unique_sectors
+                    sector_recommendations[user_id] = unique_sectors
                     
-                    # Get ground truth
+                    # Get dual-level ground truth
                     user_data = dataset_split.test_data[user_id]
-                    relevant_items = self._extract_relevant_sectors(user_data)
-                    test_ground_truth[user_id] = relevant_items
+                    sector_ground_truth[user_id] = self._extract_relevant_sectors(user_data)
+                    item_ground_truth[user_id] = self._extract_relevant_items(user_data)
             
             test_time = (datetime.now() - test_start).total_seconds()
             
-            # Evaluate
-            test_metrics = self._evaluate_recommendations(test_recommendations, test_ground_truth)
+            # Dual-level evaluation for baselines
+            sector_metrics = self._evaluate_recommendations(sector_recommendations, sector_ground_truth)
+            item_metrics = self._evaluate_recommendations(item_recommendations, item_ground_truth)
+            
+            # Combine metrics
+            combined_metrics = self._combine_dual_level_metrics(sector_metrics, item_metrics)
             
             # Create experiment run
             experiment_run = ExperimentRun(
@@ -357,12 +340,16 @@ class ExperimentalFramework:
                 train_time=train_time,
                 test_time=test_time,
                 memory_usage=0.0,  # Could implement memory tracking
-                test_metrics=test_metrics,
+                test_metrics=combined_metrics,
                 val_metrics=None,
                 detailed_results={
                     'n_train_users': len(dataset_split.train_users),
                     'n_test_users': len(dataset_split.test_users),
-                    'baseline_name': baseline.get_name()
+                    'baseline_name': baseline.get_name(),
+                    'dual_level_evaluation': {
+                        'sector_metrics': sector_metrics,
+                        'item_metrics': item_metrics
+                    }
                 },
                 timestamp=start_time.isoformat(),
                 status="completed"
@@ -426,27 +413,44 @@ class ExperimentalFramework:
             
             # Generate recommendations for test users
             test_start = datetime.now()
-            test_recommendations = {}
-            test_ground_truth = {}
+            
+            # Dual-level evaluation: collect both sector and item recommendations
+            sector_recommendations = {}
+            item_recommendations = {}
+            sector_ground_truth = {}
+            item_ground_truth = {}
             
             for user_id in dataset_split.test_users:
                 user_data = dataset_split.test_data[user_id]
                 system_user = self._convert_to_system_user(user_id, user_data)
                 hybrid_system.register_user(system_user)
                 
-                # Get recommendations
+                # Get recommendations from hybrid system
                 recommendations = hybrid_system.get_recommendations(user_id, max_recommendations=10)
-                recommended_items = [rec.sector for rec in recommendations]  # Extract sectors
-                test_recommendations[user_id] = recommended_items
                 
-                # Get ground truth - convert startup IDs to sectors
-                relevant_items = self._extract_relevant_sectors(user_data)
-                test_ground_truth[user_id] = relevant_items
+                # Extract sector-level recommendations
+                recommended_sectors = [rec.sector for rec in recommendations]
+                sector_recommendations[user_id] = recommended_sectors
+                
+                # Extract item-level recommendations (from all recommended sectors)
+                recommended_items = []
+                for rec in recommendations:
+                    if hasattr(rec, 'recommended_items') and rec.recommended_items:
+                        recommended_items.extend(rec.recommended_items[:3])  # Top 3 items per sector
+                item_recommendations[user_id] = recommended_items[:10]  # Limit to 10 total items
+                
+                # Get dual-level ground truth
+                sector_ground_truth[user_id] = self._extract_relevant_sectors(user_data)
+                item_ground_truth[user_id] = self._extract_relevant_items(user_data)
             
             test_time = (datetime.now() - test_start).total_seconds()
             
-            # Evaluate
-            test_metrics = self._evaluate_recommendations(test_recommendations, test_ground_truth)
+            # Dual-level evaluation
+            sector_metrics = self._evaluate_recommendations(sector_recommendations, sector_ground_truth)
+            item_metrics = self._evaluate_recommendations(item_recommendations, item_ground_truth)
+            
+            # Combine metrics with prefixes
+            combined_metrics = self._combine_dual_level_metrics(sector_metrics, item_metrics)
             
             # Get system statistics
             system_stats = hybrid_system.get_system_stats()
@@ -459,13 +463,17 @@ class ExperimentalFramework:
                 train_time=train_time,
                 test_time=test_time,
                 memory_usage=0.0,
-                test_metrics=test_metrics,
+                test_metrics=combined_metrics,
                 val_metrics=None,
                 detailed_results={
                     'n_train_users': len(dataset_split.train_users),
                     'n_test_users': len(dataset_split.test_users),
                     'system_stats': system_stats,
-                    'hyperparameters': config.hyperparameters
+                    'hyperparameters': config.hyperparameters,
+                    'dual_level_evaluation': {
+                        'sector_metrics': sector_metrics,
+                        'item_metrics': item_metrics
+                    }
                 },
                 timestamp=start_time.isoformat(),
                 status="completed"
@@ -806,6 +814,70 @@ class ExperimentalFramework:
                 relevant_sectors.add(sector)
         
         return list(relevant_sectors)
+    
+    def _extract_relevant_items(self, user_data: Dict[str, Any]) -> List[str]:
+        """Extract relevant items (startup IDs) from user interaction data"""
+        
+        interactions = user_data.get('interactions', [])
+        relevant_items = []
+        
+        for interaction in interactions:
+            rating = interaction.get('rating', 0.0)
+            if rating >= 3.0:  # Consider rating >= 3 as relevant
+                item_id = interaction.get('item_id', '')
+                if item_id:
+                    relevant_items.append(item_id)
+        
+        return relevant_items
+    
+    def _combine_dual_level_metrics(self, 
+                                   sector_metrics: EvaluationMetrics, 
+                                   item_metrics: EvaluationMetrics) -> EvaluationMetrics:
+        """
+        Combine sector-level and item-level metrics into a single EvaluationMetrics object
+        
+        Args:
+            sector_metrics: Evaluation metrics at sector level
+            item_metrics: Evaluation metrics at item level
+            
+        Returns:
+            Combined metrics with prefixed keys
+        """
+        
+        # Combine precision@k metrics
+        combined_precision = {}
+        for k, v in sector_metrics.precision_at_k.items():
+            combined_precision[f"sector_precision@{k}"] = v
+        for k, v in item_metrics.precision_at_k.items():
+            combined_precision[f"item_precision@{k}"] = v
+        
+        # Combine recall@k metrics
+        combined_recall = {}
+        for k, v in sector_metrics.recall_at_k.items():
+            combined_recall[f"sector_recall@{k}"] = v
+        for k, v in item_metrics.recall_at_k.items():
+            combined_recall[f"item_recall@{k}"] = v
+        
+        # Combine ndcg@k metrics
+        combined_ndcg = {}
+        for k, v in sector_metrics.ndcg_at_k.items():
+            combined_ndcg[f"sector_ndcg@{k}"] = v
+        for k, v in item_metrics.ndcg_at_k.items():
+            combined_ndcg[f"item_ndcg@{k}"] = v
+        
+        # Use sector-level for aggregate metrics (as they're more business-relevant)
+        return EvaluationMetrics(
+            precision_at_k=combined_precision,
+            recall_at_k=combined_recall,
+            ndcg_at_k=combined_ndcg,
+            map_score=sector_metrics.map_score,  # Use sector-level MAP as primary
+            mrr_score=sector_metrics.mrr_score,  # Use sector-level MRR as primary
+            diversity=sector_metrics.diversity,
+            novelty=sector_metrics.novelty,
+            coverage=sector_metrics.coverage,
+            user_satisfaction=sector_metrics.user_satisfaction,
+            engagement_metrics=sector_metrics.engagement_metrics
+        )
     
     def _evaluate_recommendations(self, recommendations: Dict[str, List[str]], 
                                 ground_truth: Dict[str, List[str]]) -> EvaluationMetrics:
