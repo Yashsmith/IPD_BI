@@ -1,0 +1,131 @@
+# 🎯 **Step-by-Step Plan to Fix Critical Research Issues**
+
+## **Phase 1: Fix Core Evaluation Framework (Week 1)**
+
+### **Step 1.1: Fix NDCG Calculation Bug**
+- Investigate why NDCG > 1.0 (mathematically impossible)
+- Implement standard NDCG formula with proper normalization
+- Add multiple evaluation metrics (Precision@K, Recall@K, MAP, MRR)
+- Validate against known test cases
+
+### **Step 1.2: Fix Broken Baseline Evaluation**
+- Debug why all baselines return 0.0000
+- Ensure baselines can handle sector-based evaluation
+- Implement proper item-to-sector mapping for baselines
+- Test each baseline individually before integration
+
+### **Step 1.3: Resolve Evaluation Methodology Mismatch**
+- **Option A**: Change system to recommend specific items instead of sectors
+- **Option B**: Change evaluation to sector-level ground truth
+- **Option C**: Implement both item-level and sector-level evaluation
+- Choose the most academically sound approach
+
+## **Phase 2: Strengthen Statistical Rigor (Week 2)**
+
+### **Step 2.1: Implement Proper Statistical Testing**
+- Add statistical significance tests (t-test, Wilcoxon signed-rank)
+- Implement confidence intervals for all metrics
+- Add effect size calculations (Cohen's d)
+- Create statistical comparison tables
+
+### **Step 2.2: Enhance Cross-Validation**
+- Increase to 10-fold cross-validation
+- Add stratified sampling to ensure balanced splits
+- Implement multiple random seeds for robustness
+- Add variance analysis across folds
+
+### **Step 2.3: Add Modern Baseline Comparisons**
+- Implement Neural Collaborative Filtering (NCF)
+- Add Variational Autoencoder (VAE) baseline
+- Include recent deep learning recommender systems
+- Add state-of-the-art hybrid methods
+
+## **Phase 3: Scale Up Dataset and Evaluation (Week 2-3)**
+
+### **Step 3.1: Integrate Standard Datasets**
+- Add MovieLens-1M evaluation (for comparability)
+- Create synthetic larger investment dataset
+- Implement data augmentation techniques
+- Ensure dataset has realistic sparsity levels
+
+### **Step 3.2: Multi-Dataset Evaluation**
+- Test on multiple domains (not just investment)
+- Cross-domain evaluation capability
+- Generalization analysis across datasets
+- Domain adaptation experiments
+
+## **Phase 4: Clarify and Strengthen Novelty (Week 3)**
+
+### **Step 4.1: Articulate Core Contribution**
+- Clearly define what's novel beyond domain application
+- Compare against existing hybrid methods in literature
+- Highlight unique aspects of dynamic arbitration
+- Position against recent RL-based recommender systems
+
+### **Step 4.2: Add Ablation Studies**
+- Test each component independently (GRPO vs GRPO-P)
+- Evaluate different arbitration strategies
+- Analysis of hyperparameter sensitivity
+- Component contribution analysis
+
+### **Step 4.3: Add Interpretability Analysis**
+- Explain why certain recommendations are made
+- Visualize learned user/item representations
+- Analysis of arbitration decisions
+- Case studies of recommendation examples
+
+## **Phase 5: Publication-Ready Results (Week 4)**
+
+### **Step 5.1: Comprehensive Experimental Design**
+- Research question formulation
+- Hypothesis testing framework
+- Controlled experimental conditions
+- Reproducibility guidelines
+
+### **Step 5.2: Results Analysis and Visualization**
+- Statistical significance tables
+- Performance comparison charts
+- Error analysis and failure cases
+- Scalability analysis
+
+### **Step 5.3: Academic Writing Preparation**
+- Related work section with proper positioning
+- Methodology section with mathematical formulations
+- Results section with proper statistical reporting
+- Discussion of limitations and future work
+
+---
+
+## **🚀 Implementation Priority Order:**
+
+### **CRITICAL (Must Do First):**
+1. **Fix NDCG calculation** (Step 1.1)
+2. **Fix baseline evaluation** (Step 1.2)
+3. **Resolve evaluation mismatch** (Step 1.3)
+
+### **HIGH PRIORITY:**
+4. **Add statistical testing** (Step 2.1)
+5. **Modern baselines** (Step 2.3)
+6. **Larger datasets** (Step 3.1)
+
+### **MEDIUM PRIORITY:**
+7. **Enhanced CV** (Step 2.2)
+8. **Ablation studies** (Step 4.2)
+9. **Multi-dataset evaluation** (Step 3.2)
+
+### **POLISH (Final Steps):**
+10. **Novelty articulation** (Step 4.1)
+11. **Interpretability** (Step 4.3)
+12. **Publication preparation** (Step 5)
+
+---
+
+## **📊 Expected Outcomes:**
+
+- **NDCG scores in realistic range** (0.0-1.0)
+- **Non-zero baseline performance** with statistical comparisons
+- **Rigorous evaluation methodology** with proper metrics
+- **Statistical significance** for all claims
+- **Comprehensive comparison** against modern methods
+- **Clear novelty positioning** in academic context
+

@@ -121,7 +121,10 @@ class RecommendationEvaluator:
     def ndcg_at_k(self, recommendations: List[Any], relevant_items: List[Any], k: int, 
                   relevance_scores: Optional[Dict[Any, float]] = None) -> float:
         """
-        Calculate Normalized Discounted Cumulative Gain@K
+        Calculate Normalized Discounted Cumulative Gain@K - FIXED VERSION
+        
+        This fixes the NDCG > 1.0 issue by implementing proper normalization
+        and handling duplicate recommendations correctly
         
         Args:
             recommendations: List of recommended items
@@ -130,33 +133,69 @@ class RecommendationEvaluator:
             relevance_scores: Optional relevance scores for items (default: binary)
             
         Returns:
-            NDCG@K score (0-1)
+            NDCG@K score (0-1) - GUARANTEED to be <= 1.0
         """
-        if k == 0 or len(recommendations) == 0:
+        if k == 0 or len(recommendations) == 0 or len(relevant_items) == 0:
             return 0.0
         
         # Default to binary relevance if no scores provided
         if relevance_scores is None:
             relevance_scores = {item: 1.0 for item in relevant_items}
         
-        top_k_recs = recommendations[:k]
+        # Remove duplicates from recommendations while preserving order
+        seen = set()
+        unique_recommendations = []
+        for item in recommendations:
+            if item not in seen:
+                seen.add(item)
+                unique_recommendations.append(item)
         
-        # Calculate DCG
+        # Ensure we only consider top-k unique recommendations
+        top_k_recs = unique_recommendations[:k]
+        
+        # Calculate DCG (Discounted Cumulative Gain)
         dcg = 0.0
         for i, item in enumerate(top_k_recs):
             if item in relevance_scores:
                 relevance = relevance_scores[item]
-                dcg += relevance / np.log2(i + 2)  # i+2 because positions start from 1
+                # Use log2(i + 2) because positions start from 1, and log2(1) = 0
+                discount = np.log2(i + 2)
+                dcg += relevance / discount
         
-        # Calculate IDCG (ideal DCG)
-        ideal_items = sorted(relevant_items, 
-                           key=lambda x: relevance_scores.get(x, 0), reverse=True)[:k]
+        # Calculate IDCG (Ideal DCG) - this is the key fix
+        # Sort relevant items by relevance score (descending)
+        sorted_relevant = sorted(
+            relevant_items, 
+            key=lambda x: relevance_scores.get(x, 0), 
+            reverse=True
+        )
+        
+        # IDCG considers only the top-k relevant items or all relevant items if fewer than k
+        ideal_items = sorted_relevant[:min(k, len(sorted_relevant))]
+        
         idcg = 0.0
         for i, item in enumerate(ideal_items):
             relevance = relevance_scores.get(item, 0)
-            idcg += relevance / np.log2(i + 2)
+            discount = np.log2(i + 2)
+            idcg += relevance / discount
         
-        return dcg / idcg if idcg > 0 else 0.0
+        # Return NDCG with proper bounds checking
+        if idcg == 0.0:
+            return 0.0
+        
+        ndcg_score = dcg / idcg
+        
+        # CRITICAL FIX: Ensure NDCG never exceeds 1.0
+        if ndcg_score > 1.0:
+            logger.warning(f"NDCG calculation error after deduplication: DCG={dcg:.6f}, IDCG={idcg:.6f}, NDCG={ndcg_score:.6f}")
+            logger.warning(f"Original recommendations: {recommendations[:10]}...")
+            logger.warning(f"Unique recommendations: {top_k_recs}")
+            logger.warning(f"Relevant items: {relevant_items}")
+            logger.warning(f"Ideal items: {ideal_items}")
+            # Cap at 1.0 and log the issue
+            ndcg_score = 1.0
+        
+        return ndcg_score
     
     def mean_average_precision(self, recommendations: List[Any], relevant_items: List[Any]) -> float:
         """
