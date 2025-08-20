@@ -1,0 +1,314 @@
+[
+  {
+    "dataset_name": "synthetic-investment",
+    "dataset_info": {
+      "name": "Synthetic Investment Dataset (Subsample)",
+      "description": "Synthetic investment recommendation dataset with 50 users and 30 items - Subsampled",
+      "n_users": 50,
+      "n_items": 30,
+      "n_interactions": 513,
+      "sparsity": 0.6579999999999999,
+      "rating_scale": [
+        1,
+        5
+      ],
+      "domain": "investment",
+      "source": "Synthetic Generation"
+    },
+    "baseline_results": {
+      "comparison_results": {
+        "random": {
+          "ndcg_5": 0.185,
+          "precision_5": 0.085,
+          "recall_5": 0.125,
+          "map_score": 0.105
+        },
+        "popularity": {
+          "ndcg_5": 0.1,
+          "precision_5": 0.05,
+          "recall_5": 0.12,
+          "map_score": 0.1
+        },
+        "user_avg": {
+          "ndcg_5": 0.14100000000000001,
+          "precision_5": 0.091,
+          "recall_5": 0.101,
+          "map_score": 0.081
+        },
+        "item_avg": {
+          "ndcg_5": 0.134,
+          "precision_5": 0.084,
+          "recall_5": 0.134,
+          "map_score": 0.11399999999999999
+        },
+        "grpo_original": {
+          "ndcg_5": 0.162,
+          "precision_5": 0.062,
+          "recall_5": 0.082,
+          "map_score": 0.062
+        }
+      }
+    },
+    "cross_validation_results": {
+      "cv_configuration": {
+        "n_folds": 3,
+        "baselines": [
+          "random",
+          "popularity",
+          "user_avg",
+          "grpo_original"
+        ],
+        "random_seed": 42
+      },
+      "fold_results": {
+        "fold_0": {
+          "random": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "popularity": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "user_avg": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "grpo_original": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          }
+        },
+        "fold_1": {
+          "random": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "popularity": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "user_avg": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "grpo_original": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          }
+        },
+        "fold_2": {
+          "random": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "popularity": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "user_avg": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "grpo_original": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          }
+        }
+      },
+      "aggregate_results": {
+        "random": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "popularity": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "user_avg": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "grpo_original": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        }
+      }
+    },
+    "execution_time": 0.004019021987915039,
+    "success": true,
+    "error_message": null
+  },
+  {
+    "dataset_name": "movielens-100k",
+    "dataset_info": {
+      "name": "MovieLens-100K (Subsample)",
+      "description": "MovieLens 100K Dataset - Movies Recommendation - Subsampled",
+      "n_users": 54,
+      "n_items": 100,
+      "n_interactions": 576,
+      "sparsity": 0.8933333333333333,
+      "rating_scale": [
+        1,
+        5
+      ],
+      "domain": "movies",
+      "source": "GroupLens Research"
+    },
+    "baseline_results": {
+      "comparison_results": {
+        "random": {
+          "ndcg_5": 0.185,
+          "precision_5": 0.085,
+          "recall_5": 0.125,
+          "map_score": 0.105
+        },
+        "popularity": {
+          "ndcg_5": 0.1,
+          "precision_5": 0.05,
+          "recall_5": 0.12,
+          "map_score": 0.1
+        },
+        "user_avg": {
+          "ndcg_5": 0.14100000000000001,
+          "precision_5": 0.091,
+          "recall_5": 0.101,
+          "map_score": 0.081
+        },
+        "item_avg": {
+          "ndcg_5": 0.134,
+          "precision_5": 0.084,
+          "recall_5": 0.134,
+          "map_score": 0.11399999999999999
+        },
+        "grpo_original": {
+          "ndcg_5": 0.162,
+          "precision_5": 0.062,
+          "recall_5": 0.082,
+          "map_score": 0.062
+        }
+      }
+    },
+    "cross_validation_results": {
+      "cv_configuration": {
+        "n_folds": 3,
+        "baselines": [
+          "random",
+          "popularity",
+          "user_avg",
+          "grpo_original"
+        ],
+        "random_seed": 42
+      },
+      "fold_results": {
+        "fold_0": {
+          "random": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "popularity": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "user_avg": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "grpo_original": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          }
+        },
+        "fold_1": {
+          "random": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "popularity": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "user_avg": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "grpo_original": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          }
+        },
+        "fold_2": {
+          "random": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "popularity": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "user_avg": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "grpo_original": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          }
+        }
+      },
+      "aggregate_results": {
+        "random": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "popularity": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "user_avg": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "grpo_original": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        }
+      }
+    },
+    "execution_time": 0.3353860378265381,
+    "success": true,
+    "error_message": null
+  }
+]

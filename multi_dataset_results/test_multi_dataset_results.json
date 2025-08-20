@@ -1,0 +1,180 @@
+[
+  {
+    "dataset_name": "synthetic-investment",
+    "dataset_info": {
+      "name": "Synthetic Investment Dataset (Subsample)",
+      "description": "Synthetic investment recommendation dataset with 50 users and 30 items - Subsampled",
+      "n_users": 50,
+      "n_items": 30,
+      "n_interactions": 579,
+      "sparsity": 0.614,
+      "rating_scale": [
+        1,
+        5
+      ],
+      "domain": "investment",
+      "source": "Synthetic Generation"
+    },
+    "baseline_results": {
+      "comparison_results": {
+        "random": {
+          "ndcg_5": 0.19,
+          "precision_5": 0.09,
+          "recall_5": 0.15000000000000002,
+          "map_score": 0.09
+        },
+        "popularity": {
+          "ndcg_5": 0.115,
+          "precision_5": 0.065,
+          "recall_5": 0.155,
+          "map_score": 0.075
+        },
+        "user_avg": {
+          "ndcg_5": 0.157,
+          "precision_5": 0.057,
+          "recall_5": 0.11699999999999999,
+          "map_score": 0.11699999999999999
+        },
+        "item_avg": {
+          "ndcg_5": 0.116,
+          "precision_5": 0.066,
+          "recall_5": 0.156,
+          "map_score": 0.076
+        },
+        "grpo_original": {
+          "ndcg_5": 0.162,
+          "precision_5": 0.062,
+          "recall_5": 0.122,
+          "map_score": 0.08199999999999999
+        }
+      }
+    },
+    "cross_validation_results": {
+      "cv_configuration": {
+        "n_folds": 3,
+        "baselines": [
+          "random",
+          "popularity",
+          "user_avg",
+          "grpo_original"
+        ],
+        "random_seed": 42
+      },
+      "fold_results": {
+        "fold_0": {
+          "random": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "popularity": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "user_avg": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          },
+          "grpo_original": {
+            "ndcg_5": 0.1,
+            "precision_5": 0.05,
+            "recall_5": 0.08
+          }
+        },
+        "fold_1": {
+          "random": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "popularity": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "user_avg": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          },
+          "grpo_original": {
+            "ndcg_5": 0.12000000000000001,
+            "precision_5": 0.060000000000000005,
+            "recall_5": 0.095
+          }
+        },
+        "fold_2": {
+          "random": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "popularity": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "user_avg": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          },
+          "grpo_original": {
+            "ndcg_5": 0.14,
+            "precision_5": 0.07,
+            "recall_5": 0.11
+          }
+        }
+      },
+      "aggregate_results": {
+        "random": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "popularity": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "user_avg": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        },
+        "grpo_original": {
+          "ndcg_5_mean": 0.12000000000000001,
+          "ndcg_5_std": 0.01,
+          "n_folds": 3
+        }
+      }
+    },
+    "execution_time": 0.0028429031372070312,
+    "success": true,
+    "error_message": null
+  },
+  {
+    "dataset_name": "synthetic-investment-small",
+    "dataset_info": {
+      "name": "synthetic-investment-small",
+      "description": "Failed to load",
+      "n_users": 0,
+      "n_items": 0,
+      "n_interactions": 0,
+      "sparsity": 0.0,
+      "rating_scale": [
+        0,
+        0
+      ],
+      "domain": "unknown",
+      "source": "unknown"
+    },
+    "baseline_results": {},
+    "cross_validation_results": {},
+    "execution_time": 5.1021575927734375e-05,
+    "success": false,
+    "error_message": "Failed to load dataset synthetic-investment-small"
+  }
+]

@@ -581,6 +581,29 @@ def create_all_baselines() -> Dict[str, BaselineRecommender]:
     
     return baselines
 
+def create_all_baselines_with_modern() -> Dict[str, BaselineRecommender]:
+    """
+    Create all baseline recommendation methods including modern ones for Phase 2 Step 2.3
+    
+    Returns:
+        Dictionary mapping method names to baseline recommender objects
+    """
+    
+    # Get traditional baselines
+    baselines = create_all_baselines()
+    
+    # Add modern baselines
+    try:
+        from .modern_baselines import create_modern_baselines
+        modern_baselines = create_modern_baselines()
+        baselines.update(modern_baselines)
+        logger.info(f"Added {len(modern_baselines)} modern baseline methods")
+    except ImportError as e:
+        logger.warning(f"Could not import modern baselines: {e}")
+        logger.info("Continuing with traditional baselines only")
+    
+    return baselines
+
 # Example usage and testing
 if __name__ == "__main__":
     print("🎯 Testing Baseline Recommendation Methods")

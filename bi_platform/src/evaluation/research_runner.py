@@ -109,7 +109,16 @@ class ResearchExperimentRunner:
             'hyperparameter_search': True,
             'ablation_study': True,
             'baseline_comparison': True,
-            'statistical_analysis': True
+            'statistical_analysis': True,
+            # Phase 2 Enhanced Cross-Validation Configuration
+            'enhanced_cv': {
+                'enabled': True,
+                'n_folds': 10,
+                'n_seeds': 5,
+                'stratify_by': 'interaction_count',
+                'min_interactions_per_user': 5,
+                'validation_ratio': 0.2
+            }
         }
         
         if config:
@@ -186,11 +195,39 @@ class ResearchExperimentRunner:
         
         logger.info(f"Dataset Statistics: {dataset_stats}")
         
-        # Create cross-validation splits
-        cv_splits = self.framework.create_cross_validation_splits(
-            user_data, 
-            n_folds=config['cross_validation_folds']
-        )
+        # Create cross-validation splits (enhanced if enabled)
+        if config.get('enhanced_cv', {}).get('enabled', False):
+            from src.evaluation.experimental_framework import CrossValidationConfig
+            
+            cv_config = CrossValidationConfig(
+                n_folds=config['enhanced_cv']['n_folds'],
+                n_seeds=config['enhanced_cv']['n_seeds'],
+                stratify_by=config['enhanced_cv']['stratify_by'],
+                min_interactions_per_user=config['enhanced_cv']['min_interactions_per_user'],
+                validation_ratio=config['enhanced_cv']['validation_ratio']
+            )
+            
+            logger.info("🔄 Using Enhanced Cross-Validation (Phase 2)")
+            enhanced_cv_splits = self.framework.create_enhanced_cross_validation_splits(user_data, cv_config)
+            cv_report = self.framework.generate_cv_report(enhanced_cv_splits)
+            
+            # Also create legacy splits for backward compatibility
+            cv_splits = self.framework.create_cross_validation_splits(
+                user_data, 
+                n_folds=config['cross_validation_folds']
+            )
+            
+            enhanced_cv_data = {
+                'enhanced_cv_splits': enhanced_cv_splits,
+                'cv_report': cv_report
+            }
+        else:
+            logger.info("🔄 Using Standard Cross-Validation")
+            cv_splits = self.framework.create_cross_validation_splits(
+                user_data, 
+                n_folds=config['cross_validation_folds']
+            )
+            enhanced_cv_data = {}
         
         # Create train/test split
         train_test_splits = self.framework.create_dataset_splits(
@@ -198,12 +235,17 @@ class ResearchExperimentRunner:
             split_ratios=(0.8 - config['test_split_ratio'], config['test_split_ratio'], config['test_split_ratio'])
         )
         
-        return {
+        result = {
             'dataset_stats': dataset_stats,
             'cv_splits': cv_splits,
             'train_test_splits': train_test_splits,
             'original_data': user_data
         }
+        
+        # Add enhanced CV data if enabled
+        result.update(enhanced_cv_data)
+        
+        return result
     
     def _phase_2_baseline_evaluation(self, dataset_results: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
         """Phase 2: Evaluate all baseline methods"""

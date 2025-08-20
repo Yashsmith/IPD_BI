@@ -16,12 +16,13 @@ from datetime import datetime
 from collections import defaultdict
 import itertools
 from pathlib import Path
+from sklearn.model_selection import StratifiedKFold, KFold
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
 from src.evaluation.research_evaluator import RecommendationEvaluator, EvaluationMetrics, StatisticalAnalyzer
-from src.evaluation.baseline_methods import BaselineRecommender, create_all_baselines
+from src.evaluation.baseline_methods import BaselineRecommender, create_all_baselines, create_all_baselines_with_modern
 from src.agents.hybrid_system import HybridRecommendationSystem, SystemUser
 from .sector_mapping import get_sector_for_startup
 
@@ -49,6 +50,32 @@ class DatasetSplit:
     split_timestamp: str
 
 @dataclass
+class EnhancedDatasetSplit:
+    """Enhanced dataset split with stratification information for Phase 2"""
+    train_users: List[str]
+    val_users: List[str] 
+    test_users: List[str]
+    train_data: Dict[str, Any]
+    val_data: Dict[str, Any]
+    test_data: Dict[str, Any]
+    split_timestamp: str
+    fold_id: int
+    random_seed: int
+    stratification_info: Dict[str, Any]
+    split_metadata: Dict[str, Any]
+
+@dataclass
+class CrossValidationConfig:
+    """Configuration for enhanced cross-validation"""
+    n_folds: int = 10
+    n_seeds: int = 5
+    stratify_by: Optional[str] = 'interaction_count'  # 'interaction_count', 'rating_mean', 'activity_level'
+    min_interactions_per_user: int = 5
+    validation_ratio: float = 0.2
+    ensure_balanced_folds: bool = True
+    random_state_base: int = 42
+
+@dataclass
 class ExperimentRun:
     """Results from a single experimental run"""
     experiment_config: ExperimentConfig
@@ -63,6 +90,309 @@ class ExperimentRun:
     timestamp: str
     status: str  # "completed", "failed", "running"
     error_message: Optional[str] = None
+
+class EnhancedCrossValidator:
+    """
+    Enhanced cross-validation with stratified sampling, multiple seeds, and comprehensive reporting
+    """
+    
+    def __init__(self, config: CrossValidationConfig = None):
+        self.config = config or CrossValidationConfig()
+        
+    def _compute_user_statistics(self, user_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Compute statistics for each user for stratification"""
+        user_stats = {}
+        
+        for user_id, data in user_data.items():
+            interactions = data.get('interactions', [])
+            
+            stats = {
+                'interaction_count': len(interactions),
+                'rating_mean': np.mean([i.get('rating', 0) for i in interactions]) if interactions else 0,
+                'rating_std': np.std([i.get('rating', 0) for i in interactions]) if interactions else 0,
+                'unique_items': len(set(i.get('item_id', '') for i in interactions)),
+                'activity_level': self._classify_activity_level(len(interactions))
+            }
+            
+            user_stats[user_id] = stats
+            
+        return user_stats
+    
+    def _classify_activity_level(self, interaction_count: int) -> str:
+        """Classify user activity level based on interaction count"""
+        if interaction_count < 5:
+            return 'low'
+        elif interaction_count < 20:
+            return 'medium'
+        else:
+            return 'high'
+    
+    def _create_stratification_labels(self, user_stats: Dict[str, Dict[str, Any]], 
+                                    stratify_by: str) -> Dict[str, int]:
+        """Create stratification labels for users"""
+        user_labels = {}
+        
+        if stratify_by == 'interaction_count':
+            # Stratify by interaction count quartiles
+            counts = [stats['interaction_count'] for stats in user_stats.values()]
+            quartiles = np.percentile(counts, [25, 50, 75])
+            
+            for user_id, stats in user_stats.items():
+                count = stats['interaction_count']
+                if count <= quartiles[0]:
+                    label = 0  # Q1
+                elif count <= quartiles[1]:
+                    label = 1  # Q2
+                elif count <= quartiles[2]:
+                    label = 2  # Q3
+                else:
+                    label = 3  # Q4
+                user_labels[user_id] = label
+                
+        elif stratify_by == 'activity_level':
+            # Stratify by activity level
+            activity_map = {'low': 0, 'medium': 1, 'high': 2}
+            for user_id, stats in user_stats.items():
+                user_labels[user_id] = activity_map[stats['activity_level']]
+                
+        elif stratify_by == 'rating_mean':
+            # Stratify by mean rating quartiles
+            ratings = [stats['rating_mean'] for stats in user_stats.values()]
+            quartiles = np.percentile(ratings, [25, 50, 75])
+            
+            for user_id, stats in user_stats.items():
+                rating = stats['rating_mean']
+                if rating <= quartiles[0]:
+                    label = 0
+                elif rating <= quartiles[1]:
+                    label = 1
+                elif rating <= quartiles[2]:
+                    label = 2
+                else:
+                    label = 3
+                user_labels[user_id] = label
+                
+        return user_labels
+    
+    def _filter_users(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter users based on minimum interaction requirements"""
+        filtered_data = {}
+        
+        for user_id, data in user_data.items():
+            interactions = data.get('interactions', [])
+            if len(interactions) >= self.config.min_interactions_per_user:
+                filtered_data[user_id] = data
+                
+        return filtered_data
+    
+    def create_stratified_splits(self, user_data: Dict[str, Any], 
+                               random_seed: int) -> List[EnhancedDatasetSplit]:
+        """Create stratified k-fold cross-validation splits"""
+        
+        # Filter users
+        filtered_data = self._filter_users(user_data)
+        
+        # Compute user statistics
+        user_stats = self._compute_user_statistics(filtered_data)
+        
+        # Create stratification labels
+        if self.config.stratify_by:
+            user_labels = self._create_stratification_labels(user_stats, self.config.stratify_by)
+            
+            # Prepare data for sklearn
+            user_ids = list(filtered_data.keys())
+            labels = [user_labels[user_id] for user_id in user_ids]
+            
+            # Create stratified folds
+            skf = StratifiedKFold(
+                n_splits=self.config.n_folds, 
+                shuffle=True, 
+                random_state=random_seed
+            )
+            
+            fold_indices = list(skf.split(user_ids, labels))
+        else:
+            # Regular k-fold
+            user_ids = list(filtered_data.keys())
+            kf = KFold(
+                n_splits=self.config.n_folds,
+                shuffle=True,
+                random_state=random_seed
+            )
+            
+            fold_indices = list(kf.split(user_ids))
+            user_labels = {user_id: 0 for user_id in user_ids}  # Dummy labels
+        
+        # Create enhanced splits
+        splits = []
+        
+        for fold_idx, (train_val_idx, test_idx) in enumerate(fold_indices):
+            # Get user IDs for this fold
+            train_val_users = [user_ids[i] for i in train_val_idx]
+            test_users = [user_ids[i] for i in test_idx]
+            
+            # Split train_val into train and validation
+            np.random.seed(random_seed + fold_idx)  # Ensure reproducibility
+            np.random.shuffle(train_val_users)
+            
+            val_size = int(len(train_val_users) * self.config.validation_ratio)
+            val_users = train_val_users[:val_size]
+            train_users = train_val_users[val_size:]
+            
+            # Create data dictionaries
+            train_data = {user_id: filtered_data[user_id] for user_id in train_users}
+            val_data = {user_id: filtered_data[user_id] for user_id in val_users}
+            test_data = {user_id: filtered_data[user_id] for user_id in test_users}
+            
+            # Compute stratification info for this fold
+            stratification_info = self._compute_fold_stratification_info(
+                train_users, val_users, test_users, user_stats, user_labels
+            )
+            
+            # Create split metadata
+            split_metadata = {
+                'train_size': len(train_users),
+                'val_size': len(val_users),
+                'test_size': len(test_users),
+                'total_interactions_train': sum(len(data['interactions']) for data in train_data.values()),
+                'total_interactions_val': sum(len(data['interactions']) for data in val_data.values()),
+                'total_interactions_test': sum(len(data['interactions']) for data in test_data.values()),
+            }
+            
+            split = EnhancedDatasetSplit(
+                train_users=train_users,
+                val_users=val_users,
+                test_users=test_users,
+                train_data=train_data,
+                val_data=val_data,
+                test_data=test_data,
+                split_timestamp=datetime.now().isoformat(),
+                fold_id=fold_idx,
+                random_seed=random_seed,
+                stratification_info=stratification_info,
+                split_metadata=split_metadata
+            )
+            
+            splits.append(split)
+            
+        return splits
+    
+    def _compute_fold_stratification_info(self, train_users: List[str], 
+                                        val_users: List[str], 
+                                        test_users: List[str],
+                                        user_stats: Dict[str, Dict[str, Any]],
+                                        user_labels: Dict[str, int]) -> Dict[str, Any]:
+        """Compute stratification information for a fold"""
+        
+        def get_label_distribution(users):
+            labels = [user_labels[user_id] for user_id in users]
+            distribution = defaultdict(int)
+            for label in labels:
+                distribution[label] += 1
+            return dict(distribution)
+        
+        def get_stats_summary(users):
+            if not users:
+                return {'mean': 0, 'std': 0, 'min': 0, 'max': 0}
+            
+            interactions = [user_stats[user_id]['interaction_count'] for user_id in users]
+            return {
+                'mean': np.mean(interactions),
+                'std': np.std(interactions),
+                'min': np.min(interactions),
+                'max': np.max(interactions)
+            }
+        
+        return {
+            'train_label_distribution': get_label_distribution(train_users),
+            'val_label_distribution': get_label_distribution(val_users),
+            'test_label_distribution': get_label_distribution(test_users),
+            'train_interaction_stats': get_stats_summary(train_users),
+            'val_interaction_stats': get_stats_summary(val_users),
+            'test_interaction_stats': get_stats_summary(test_users)
+        }
+    
+    def create_multiple_seed_splits(self, user_data: Dict[str, Any]) -> Dict[int, List[EnhancedDatasetSplit]]:
+        """Create cross-validation splits with multiple random seeds"""
+        
+        all_splits = {}
+        
+        for seed_idx in range(self.config.n_seeds):
+            seed = self.config.random_state_base + seed_idx
+            logger.info(f"Creating CV splits with seed {seed} ({seed_idx + 1}/{self.config.n_seeds})")
+            
+            splits = self.create_stratified_splits(user_data, seed)
+            all_splits[seed] = splits
+            
+        return all_splits
+    
+    def generate_cv_report(self, all_splits: Dict[int, List[EnhancedDatasetSplit]]) -> Dict[str, Any]:
+        """Generate comprehensive cross-validation report"""
+        
+        report = {
+            'cv_configuration': {
+                'n_folds': self.config.n_folds,
+                'n_seeds': self.config.n_seeds,
+                'stratify_by': self.config.stratify_by,
+                'min_interactions_per_user': self.config.min_interactions_per_user,
+                'validation_ratio': self.config.validation_ratio
+            },
+            'fold_statistics': {},
+            'seed_consistency': {},
+            'overall_statistics': {}
+        }
+        
+        # Analyze fold statistics across seeds
+        for seed, splits in all_splits.items():
+            seed_stats = []
+            
+            for split in splits:
+                fold_stats = {
+                    'fold_id': split.fold_id,
+                    'train_size': split.split_metadata['train_size'],
+                    'val_size': split.split_metadata['val_size'],
+                    'test_size': split.split_metadata['test_size'],
+                    'train_interactions': split.split_metadata['total_interactions_train'],
+                    'val_interactions': split.split_metadata['total_interactions_val'],
+                    'test_interactions': split.split_metadata['total_interactions_test']
+                }
+                seed_stats.append(fold_stats)
+                
+            report['fold_statistics'][seed] = seed_stats
+        
+        # Compute overall statistics
+        all_train_sizes = []
+        all_test_sizes = []
+        all_val_sizes = []
+        
+        for seed, splits in all_splits.items():
+            for split in splits:
+                all_train_sizes.append(split.split_metadata['train_size'])
+                all_val_sizes.append(split.split_metadata['val_size'])
+                all_test_sizes.append(split.split_metadata['test_size'])
+        
+        report['overall_statistics'] = {
+            'train_size_stats': {
+                'mean': np.mean(all_train_sizes),
+                'std': np.std(all_train_sizes),
+                'min': np.min(all_train_sizes),
+                'max': np.max(all_train_sizes)
+            },
+            'val_size_stats': {
+                'mean': np.mean(all_val_sizes),
+                'std': np.std(all_val_sizes),
+                'min': np.min(all_val_sizes),
+                'max': np.max(all_val_sizes)
+            },
+            'test_size_stats': {
+                'mean': np.mean(all_test_sizes),
+                'std': np.std(all_test_sizes),
+                'min': np.min(all_test_sizes),
+                'max': np.max(all_test_sizes)
+            }
+        }
+        
+        return report
 
 class ExperimentalFramework:
     """
@@ -91,9 +421,12 @@ class ExperimentalFramework:
         self.evaluator = RecommendationEvaluator()
         self.statistical_analyzer = StatisticalAnalyzer()
         
+        # Initialize enhanced cross-validator for Phase 2
+        self.enhanced_cv = None  # Will be initialized when needed
+        
         # Experiment tracking
         self.experiment_results: List[ExperimentRun] = []
-        self.baseline_methods = create_all_baselines()
+        self.baseline_methods = create_all_baselines_with_modern()  # Phase 2 - Modern baselines
         
         logger.info(f"ExperimentalFramework initialized with results dir: {results_dir}")
     
@@ -219,6 +552,43 @@ class ExperimentalFramework:
         
         logger.info(f"Created {n_folds}-fold cross-validation splits")
         return splits
+    
+    def create_enhanced_cross_validation_splits(self, 
+                                              user_data: Dict[str, Any],
+                                              cv_config: CrossValidationConfig = None) -> Dict[int, List[EnhancedDatasetSplit]]:
+        """
+        Create enhanced cross-validation splits with stratification and multiple seeds (Phase 2)
+        
+        Args:
+            user_data: Dictionary with user interaction data
+            cv_config: Configuration for enhanced cross-validation
+            
+        Returns:
+            Dictionary mapping seeds to lists of EnhancedDatasetSplit objects
+        """
+        
+        if cv_config is None:
+            cv_config = CrossValidationConfig()
+        
+        # Initialize enhanced cross-validator if needed
+        if self.enhanced_cv is None:
+            self.enhanced_cv = EnhancedCrossValidator(cv_config)
+        
+        logger.info(f"Creating enhanced CV splits: {cv_config.n_folds} folds, {cv_config.n_seeds} seeds, stratify by {cv_config.stratify_by}")
+        
+        # Create multiple seed splits
+        all_splits = self.enhanced_cv.create_multiple_seed_splits(user_data)
+        
+        logger.info(f"Created enhanced {cv_config.n_folds}-fold CV splits with {cv_config.n_seeds} random seeds")
+        return all_splits
+    
+    def generate_cv_report(self, all_splits: Dict[int, List[EnhancedDatasetSplit]]) -> Dict[str, Any]:
+        """Generate comprehensive cross-validation report for Phase 2"""
+        
+        if self.enhanced_cv is None:
+            raise ValueError("Enhanced cross-validator not initialized")
+            
+        return self.enhanced_cv.generate_cv_report(all_splits)
     
     def generate_hyperparameter_grid(self, 
                                    method_name: str,

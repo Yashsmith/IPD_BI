@@ -48,7 +48,7 @@ class ExperimentResult:
 
 @dataclass
 class ComparisonResult:
-    """Statistical comparison between methods"""
+    """Statistical comparison between methods - Enhanced for Phase 2"""
     method_a: str
     method_b: str
     metric_name: str
@@ -59,6 +59,49 @@ class ComparisonResult:
     confidence_interval: Tuple[float, float]
     significant: bool
     verdict: str  # "A significantly better", "B significantly better", "No significant difference"
+
+@dataclass
+class EnhancedComparisonResult:
+    """Comprehensive statistical comparison result for publication-ready research"""
+    method_a_name: str
+    method_b_name: str
+    metric_name: str
+    
+    # Descriptive statistics
+    mean_a: float
+    mean_b: float
+    std_a: float
+    std_b: float
+    median_a: float
+    median_b: float
+    mean_difference: float
+    
+    # Statistical tests
+    t_statistic: float
+    t_p_value: float
+    wilcoxon_statistic: float
+    wilcoxon_p_value: float
+    mann_whitney_statistic: float
+    mann_whitney_p_value: float
+    
+    # Effect sizes
+    cohens_d: float
+    effect_size_interpretation: str
+    
+    # Confidence intervals
+    mean_diff_ci_lower: float
+    mean_diff_ci_upper: float
+    confidence_level: float
+    
+    # Normality and variance tests
+    normality_a_p: float
+    normality_b_p: float
+    variance_test_p: float
+    
+    # Final recommendation
+    is_significant: bool
+    recommended_test: str
+    interpretation: str
 
 class RecommendationEvaluator:
     """
@@ -474,37 +517,185 @@ class RecommendationEvaluator:
 
 class StatisticalAnalyzer:
     """
-    Statistical analysis tools for comparing recommendation methods
+    Enhanced statistical analysis tools for publication-ready recommendation research
+    Implements comprehensive statistical testing with proper assumptions checking
     """
     
-    def __init__(self, alpha: float = 0.05):
+    def __init__(self, alpha: float = 0.05, confidence_level: float = 0.95):
         """
-        Initialize statistical analyzer
+        Initialize enhanced statistical analyzer
         
         Args:
             alpha: Significance level for hypothesis testing
+            confidence_level: Confidence level for intervals
         """
         self.alpha = alpha
+        self.confidence_level = confidence_level
     
-    def cohens_d(self, group1: List[float], group2: List[float]) -> float:
-        """
-        Calculate Cohen's d effect size
-        
-        Args:
-            group1: First group of values
-            group2: Second group of values
-            
-        Returns:
-            Cohen's d effect size
-        """
+    def cohens_d(self, group1: List[float], group2: List[float]) -> Tuple[float, str]:
+        """Calculate Cohen's d with interpretation"""
         n1, n2 = len(group1), len(group2)
         mean1, mean2 = np.mean(group1), np.mean(group2)
         var1, var2 = np.var(group1, ddof=1), np.var(group2, ddof=1)
         
         # Pooled standard deviation
         pooled_std = np.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
+        d = (mean1 - mean2) / pooled_std if pooled_std > 0 else 0.0
         
-        return (mean1 - mean2) / pooled_std if pooled_std > 0 else 0.0
+        # Interpretation based on Cohen (1988)
+        if abs(d) < 0.2:
+            interpretation = "negligible"
+        elif abs(d) < 0.5:
+            interpretation = "small"
+        elif abs(d) < 0.8:
+            interpretation = "medium"
+        else:
+            interpretation = "large"
+            
+        return d, interpretation
+    
+    def test_normality(self, data: List[float]) -> Tuple[float, bool]:
+        """Test normality using Shapiro-Wilk test"""
+        if len(data) < 3:
+            return 1.0, True  # Assume normal for very small samples
+        
+        # Use Shapiro-Wilk for smaller samples, D'Agostino for larger
+        if len(data) <= 50:
+            from scipy.stats import shapiro
+            statistic, p_value = shapiro(data)
+        else:
+            from scipy.stats import normaltest
+            statistic, p_value = normaltest(data)
+            
+        is_normal = p_value > self.alpha
+        return p_value, is_normal
+    
+    def test_equal_variances(self, group1: List[float], group2: List[float]) -> Tuple[float, bool]:
+        """Test equality of variances using Levene's test"""
+        from scipy.stats import levene
+        statistic, p_value = levene(group1, group2)
+        equal_variances = p_value > self.alpha
+        return p_value, equal_variances
+    
+    def confidence_interval_diff(self, group1: List[float], group2: List[float]) -> Tuple[float, float]:
+        """Calculate confidence interval for difference in means"""
+        n1, n2 = len(group1), len(group2)
+        mean1, mean2 = np.mean(group1), np.mean(group2)
+        var1, var2 = np.var(group1, ddof=1), np.var(group2, ddof=1)
+        
+        # Standard error of difference
+        se_diff = np.sqrt(var1/n1 + var2/n2)
+        
+        # Degrees of freedom (Welch's formula)
+        df = (var1/n1 + var2/n2)**2 / ((var1/n1)**2/(n1-1) + (var2/n2)**2/(n2-1))
+        
+        # t-critical value
+        t_crit = stats.t.ppf((1 + self.confidence_level) / 2, df)
+        
+        # Difference and margin of error
+        diff = mean1 - mean2
+        margin = t_crit * se_diff
+        
+        return (diff - margin, diff + margin)
+    
+    def comprehensive_comparison(self, 
+                               method_a_results: List[float],
+                               method_b_results: List[float],
+                               method_a_name: str,
+                               method_b_name: str,
+                               metric_name: str) -> EnhancedComparisonResult:
+        """
+        Comprehensive statistical comparison with multiple tests and interpretations
+        """
+        
+        # Descriptive statistics
+        mean_a, mean_b = np.mean(method_a_results), np.mean(method_b_results)
+        std_a, std_b = np.std(method_a_results), np.std(method_b_results)
+        median_a, median_b = np.median(method_a_results), np.median(method_b_results)
+        mean_diff = mean_a - mean_b
+        
+        # Effect size
+        cohens_d_val, effect_interpretation = self.cohens_d(method_a_results, method_b_results)
+        
+        # Normality tests
+        norm_p_a, is_normal_a = self.test_normality(method_a_results)
+        norm_p_b, is_normal_b = self.test_normality(method_b_results)
+        
+        # Variance test
+        var_p, equal_vars = self.test_equal_variances(method_a_results, method_b_results)
+        
+        # Parametric tests
+        t_stat, t_p = stats.ttest_ind(method_a_results, method_b_results, equal_var=equal_vars)
+        
+        # Non-parametric tests
+        try:
+            wilcoxon_stat, wilcoxon_p = stats.wilcoxon(method_a_results, method_b_results)
+        except:
+            # If paired test fails, use independent samples
+            wilcoxon_stat, wilcoxon_p = np.nan, np.nan
+            
+        mw_stat, mw_p = stats.mannwhitneyu(method_a_results, method_b_results, alternative='two-sided')
+        
+        # Confidence interval for difference
+        ci_lower, ci_upper = self.confidence_interval_diff(method_a_results, method_b_results)
+        
+        # Determine recommended test and significance
+        both_normal = is_normal_a and is_normal_b
+        
+        if both_normal and equal_vars:
+            recommended_test = "Independent t-test"
+            p_value_to_use = t_p
+        elif both_normal and not equal_vars:
+            recommended_test = "Welch's t-test"
+            p_value_to_use = t_p
+        else:
+            recommended_test = "Mann-Whitney U test"
+            p_value_to_use = mw_p
+            
+        is_significant = p_value_to_use < self.alpha
+        
+        # Generate interpretation
+        if is_significant:
+            if mean_diff > 0:
+                winner = method_a_name
+                direction = "significantly better than"
+            else:
+                winner = method_b_name
+                direction = "significantly better than"
+                
+            interpretation = f"{winner} is {direction} the other method (p={p_value_to_use:.3f}, effect size={effect_interpretation})"
+        else:
+            interpretation = f"No significant difference found (p={p_value_to_use:.3f})"
+            
+        return EnhancedComparisonResult(
+            method_a_name=method_a_name,
+            method_b_name=method_b_name,
+            metric_name=metric_name,
+            mean_a=mean_a,
+            mean_b=mean_b,
+            std_a=std_a,
+            std_b=std_b,
+            median_a=median_a,
+            median_b=median_b,
+            mean_difference=mean_diff,
+            t_statistic=t_stat,
+            t_p_value=t_p,
+            wilcoxon_statistic=wilcoxon_stat,
+            wilcoxon_p_value=wilcoxon_p,
+            mann_whitney_statistic=mw_stat,
+            mann_whitney_p_value=mw_p,
+            cohens_d=cohens_d_val,
+            effect_size_interpretation=effect_interpretation,
+            mean_diff_ci_lower=ci_lower,
+            mean_diff_ci_upper=ci_upper,
+            confidence_level=self.confidence_level,
+            normality_a_p=norm_p_a,
+            normality_b_p=norm_p_b,
+            variance_test_p=var_p,
+            is_significant=is_significant,
+            recommended_test=recommended_test,
+            interpretation=interpretation
+        )
     
     def paired_t_test(self, group1: List[float], group2: List[float]) -> Tuple[float, float]:
         """
@@ -585,7 +776,7 @@ class StatisticalAnalyzer:
                        metric_name: str,
                        paired: bool = True) -> ComparisonResult:
         """
-        Statistical comparison between two methods
+        Statistical comparison between two methods (backward compatibility)
         
         Args:
             method_a_results: Results from method A
@@ -605,7 +796,7 @@ class StatisticalAnalyzer:
         mean_diff = mean_a - mean_b
         
         # Effect size
-        effect_size = self.cohens_d(method_a_results, method_b_results)
+        effect_size, _ = self.cohens_d(method_a_results, method_b_results)
         
         # Statistical test
         if paired:
@@ -640,6 +831,27 @@ class StatisticalAnalyzer:
             significant=significant,
             verdict=verdict
         )
+    
+    def generate_comparison_table(self, comparisons: List[EnhancedComparisonResult]) -> str:
+        """Generate a publication-ready comparison table"""
+        
+        table_lines = []
+        
+        # Header
+        header = f"{'Metric':<12} {'Method A':<15} {'Method B':<15} {'Mean A±SD':<12} {'Mean B±SD':<12} {'Diff':<8} {'CI':<15} {'d':<6} {'Test':<15} {'p':<8} {'Sig':<4}"
+        table_lines.append(header)
+        table_lines.append("=" * len(header))
+        
+        for comp in comparisons:
+            mean_a_str = f"{comp.mean_a:.3f}±{comp.std_a:.3f}"
+            mean_b_str = f"{comp.mean_b:.3f}±{comp.std_b:.3f}"
+            ci_str = f"[{comp.mean_diff_ci_lower:.3f},{comp.mean_diff_ci_upper:.3f}]"
+            p_val_str = f"{comp.t_p_value:.3f}" if 't-test' in comp.recommended_test else f"{comp.mann_whitney_p_value:.3f}"
+            
+            row = f"{comp.metric_name:<12} {comp.method_a_name:<15} {comp.method_b_name:<15} {mean_a_str:<12} {mean_b_str:<12} {comp.mean_difference:<8.3f} {ci_str:<15} {comp.cohens_d:<6.3f} {comp.recommended_test:<15} {p_val_str:<8} {'Yes' if comp.is_significant else 'No':<4}"
+            table_lines.append(row)
+            
+        return "\n".join(table_lines)
 
 # Example usage and testing
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ This is where you start the system
 import sys
 import os
 from pathlib import Path
+import pandas as pd
 
 # Add src directory to Python path
 project_root = Path(__file__).parent
