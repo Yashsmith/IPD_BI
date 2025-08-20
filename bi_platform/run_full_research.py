@@ -6,10 +6,12 @@ Execute comprehensive academic evaluation of GRPO-GRPO-P
 import sys
 import os
 
-# Add src to path
-sys.path.append('src')
+# Ensure project root is on sys.path for `src` package imports
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-from evaluation.research_runner import ResearchExperimentRunner
+from src.evaluation.research_runner import ResearchExperimentRunner
 
 def create_sample_dataset():
     """Create a sample dataset for testing"""

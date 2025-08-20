@@ -25,6 +25,59 @@ class BlendingStrategy(Enum):
     DYNAMIC_LEARNED = "dynamic_learned"
     CONSERVATIVE_FUSION = "conservative_fusion"
 
+class RecommendationStrategy(Enum):
+    """Different recommendation strategies for diversity"""
+    CONSERVATIVE_LONG_TERM = "conservative_long_term"
+    AGGRESSIVE_SHORT_TERM = "aggressive_short_term"
+    SECTOR_ROTATION = "sector_rotation"
+    MOMENTUM_BASED = "momentum_based"
+    CONTRARIAN_OPPORTUNITY = "contrarian_opportunity"
+    VALUE_INVESTING = "value_investing"
+    GROWTH_FOCUSED = "growth_focused"
+
+@dataclass
+class CompanyInfo:
+    """Information about a specific company/startup"""
+    name: str
+    sector: str
+    location: str
+    description: str
+    confidence_score: float
+    risk_level: str
+    investment_amount: Optional[str] = None
+    time_horizon: Optional[str] = None
+    entry_strategy: Optional[str] = None
+    relevance_score: float = 0.0  # How relevant this company is to the user's query
+
+@dataclass
+class ArticleSummary:
+    """Summary of a news article that supports the recommendation"""
+    title: str
+    source: str
+    published_date: str
+    sentiment: float
+    key_points: List[str]
+    relevance_score: float
+
+@dataclass
+class MarketAnalysis:
+    """Market analysis for the recommendation"""
+    sector_sentiment: float
+    market_trend: str
+    volatility_level: str
+    key_drivers: List[str]
+    risk_factors: List[str]
+    opportunity_factors: List[str]
+
+@dataclass
+class PolicyImpact:
+    """Government policy impact on the recommendation"""
+    policy_type: str
+    description: str
+    impact_level: str
+    timeline: str
+    beneficiaries: List[str]
+
 @dataclass
 class BlendedRecommendation:
     """Final recommendation that blends GRPO and GRPO-P inputs"""
@@ -53,6 +106,46 @@ class BlendedRecommendation:
     explanation_detail: str = "medium"
     confidence_breakdown: Dict[str, float] = field(default_factory=dict)
     alternative_options: List[Dict[str, Any]] = field(default_factory=list)
+
+@dataclass
+class EnhancedRecommendation:
+    """Comprehensive recommendation with full context and evidence"""
+    
+    # Core recommendation
+    sector: str
+    action: str  # invest, avoid, monitor, accumulate, divest
+    confidence: float
+    risk_level: str
+    strategy_type: RecommendationStrategy
+    
+    # Specific details
+    target_companies: List[CompanyInfo]
+    investment_amount: Optional[str]
+    time_horizon: str
+    entry_strategy: str
+    unique_angle: str
+    
+    # Evidence and reasoning
+    supporting_articles: List[ArticleSummary]
+    market_analysis: MarketAnalysis
+    policy_impact: Optional[PolicyImpact]
+    risk_factors: List[str]
+    opportunity_factors: List[str]
+    
+    # Blending metadata
+    grpo_weight: float
+    grpo_p_weight: float
+    blending_strategy: str
+    
+    # Detailed reasoning
+    comprehensive_reasoning: str
+    market_context: str
+    investment_thesis: str
+    
+    # Differentiation factors
+    what_makes_this_different: str
+    competitive_advantage: str
+    market_timing: str
 
 @dataclass
 class ArbitrationContext:
