@@ -1,0 +1,217 @@
+{
+  "user": {
+    "user_id": "1",
+    "role": "entrepreneur",
+    "sectors": [
+      "technology"
+    ],
+    "location": "india",
+    "capital_range": "low",
+    "risk_appetite": "low",
+    "experience_level": "beginner"
+  },
+  "timestamp": "20250821_132326",
+  "recommendations": [
+    {
+      "sector": "technology",
+      "action": "monitor",
+      "confidence": 0.5606657896049758,
+      "risk_level": "moderate",
+      "strategy_type": "conservative_long_term",
+      "target_companies": [],
+      "investment_amount": "\u20b910,000 - \u20b950,000",
+      "time_horizon": "3-5 years",
+      "entry_strategy": "Systematic Investment Plan (SIP)",
+      "unique_angle": "Early stage opportunity in emerging market",
+      "supporting_articles": [],
+      "market_analysis": {
+        "sector_sentiment": 0.35577071938315347,
+        "market_trend": "bullish",
+        "volatility_level": "moderate",
+        "key_drivers": [
+          "Ai momentum (mentioned 8 times)",
+          "Cloud momentum (mentioned 6 times)",
+          "Cybersecurity momentum (mentioned 5 times)"
+        ],
+        "risk_factors": [
+          "Moderate market volatility",
+          "Technology disruption",
+          "Cybersecurity threats"
+        ],
+        "opportunity_factors": [
+          "Strong technology sector sentiment",
+          "AI/ML adoption",
+          "Cloud migration"
+        ]
+      },
+      "policy_impact": {
+        "policy_type": "Digital India",
+        "description": "PLI scheme for IT hardware and semiconductor manufacturing",
+        "impact_level": "high",
+        "timeline": "12-18 months",
+        "beneficiaries": [
+          "Hardware manufacturers",
+          "Semiconductor companies",
+          "IT services"
+        ]
+      },
+      "risk_factors": [
+        "Market volatility in technology sector",
+        "Regulatory changes",
+        "Economic uncertainty",
+        "Competition intensity",
+        "Technology disruption"
+      ],
+      "opportunity_factors": [
+        "Strong growth potential in technology",
+        "Government policy support",
+        "Market expansion opportunities",
+        "Innovation potential",
+        "Strategic partnerships"
+      ],
+      "grpo_weight": 0.6114645733503412,
+      "grpo_p_weight": 0.3885354266496588,
+      "blending_strategy": "confidence_weighted",
+      "comprehensive_reasoning": "Based on comprehensive analysis of the technology sector, we recommend monitor due to:\n        \n        1. Market Conditions: bullish sentiment with moderate volatility\n        2. Policy Support: PLI scheme for IT hardware and semiconductor manufacturing with high impact\n        3. Company Strength: 0 strong companies identified with confidence scores []\n        4. News Evidence: 0 supporting articles with positive sentiment\n        5. Strategy Alignment: conservative_long_term approach optimized for current market conditions",
+      "market_context": "The technology sector is currently experiencing bullish conditions \n        with key drivers including Ai momentum (mentioned 8 times), Cloud momentum (mentioned 6 times). \n        Government policies are supportive with PLI scheme for IT hardware and semiconductor manufacturing.",
+      "investment_thesis": "Our investment thesis is based on monitor in technology because:\n        - Market sentiment is bullish\n        - Policy environment is favorable\n        - Strong companies available for investment\n        - Risk-reward ratio is attractive",
+      "what_makes_this_different": "This recommendation differs from others because it uses a conservative_long_term strategy,\n        focuses on technology sector, and considers 0 pieces of supporting evidence.",
+      "competitive_advantage": "Competitive advantages include early mover advantage in technology,\n        government policy support, and strong market fundamentals.",
+      "market_timing": "Market timing is favorable due to bullish sentiment,\n        policy announcements, and current market conditions."
+    },
+    {
+      "sector": "technology",
+      "action": "invest",
+      "confidence": 0.5606657896049758,
+      "risk_level": "moderate",
+      "strategy_type": "aggressive_short_term",
+      "target_companies": [],
+      "investment_amount": "\u20b910,000 - \u20b950,000",
+      "time_horizon": "6-12 months",
+      "entry_strategy": "Lump sum investment",
+      "unique_angle": "Value play in established sector",
+      "supporting_articles": [],
+      "market_analysis": {
+        "sector_sentiment": 0.35577071938315347,
+        "market_trend": "bullish",
+        "volatility_level": "moderate",
+        "key_drivers": [
+          "Ai momentum (mentioned 8 times)",
+          "Cloud momentum (mentioned 6 times)",
+          "Cybersecurity momentum (mentioned 5 times)"
+        ],
+        "risk_factors": [
+          "Moderate market volatility",
+          "Technology disruption",
+          "Cybersecurity threats"
+        ],
+        "opportunity_factors": [
+          "Strong technology sector sentiment",
+          "AI/ML adoption",
+          "Cloud migration"
+        ]
+      },
+      "policy_impact": {
+        "policy_type": "Digital India",
+        "description": "PLI scheme for IT hardware and semiconductor manufacturing",
+        "impact_level": "high",
+        "timeline": "12-18 months",
+        "beneficiaries": [
+          "Hardware manufacturers",
+          "Semiconductor companies",
+          "IT services"
+        ]
+      },
+      "risk_factors": [
+        "Market volatility in technology sector",
+        "Regulatory changes",
+        "Economic uncertainty",
+        "Competition intensity",
+        "Technology disruption"
+      ],
+      "opportunity_factors": [
+        "Strong growth potential in technology",
+        "Government policy support",
+        "Market expansion opportunities",
+        "Innovation potential",
+        "Strategic partnerships"
+      ],
+      "grpo_weight": 0.6114645733503412,
+      "grpo_p_weight": 0.3885354266496588,
+      "blending_strategy": "confidence_weighted",
+      "comprehensive_reasoning": "Based on comprehensive analysis of the technology sector, we recommend invest due to:\n        \n        1. Market Conditions: bullish sentiment with moderate volatility\n        2. Policy Support: PLI scheme for IT hardware and semiconductor manufacturing with high impact\n        3. Company Strength: 0 strong companies identified with confidence scores []\n        4. News Evidence: 0 supporting articles with positive sentiment\n        5. Strategy Alignment: aggressive_short_term approach optimized for current market conditions",
+      "market_context": "The technology sector is currently experiencing bullish conditions \n        with key drivers including Ai momentum (mentioned 8 times), Cloud momentum (mentioned 6 times). \n        Government policies are supportive with PLI scheme for IT hardware and semiconductor manufacturing.",
+      "investment_thesis": "Our investment thesis is based on invest in technology because:\n        - Market sentiment is bullish\n        - Policy environment is favorable\n        - Strong companies available for investment\n        - Risk-reward ratio is attractive",
+      "what_makes_this_different": "This recommendation differs from others because it uses a aggressive_short_term strategy,\n        focuses on technology sector, and considers 0 pieces of supporting evidence.",
+      "competitive_advantage": "Competitive advantages include early mover advantage in technology,\n        government policy support, and strong market fundamentals.",
+      "market_timing": "Market timing is favorable due to bullish sentiment,\n        policy announcements, and current market conditions."
+    },
+    {
+      "sector": "technology",
+      "action": "invest",
+      "confidence": 0.5606657896049758,
+      "risk_level": "moderate",
+      "strategy_type": "sector_rotation",
+      "target_companies": [],
+      "investment_amount": "\u20b910,000 - \u20b950,000",
+      "time_horizon": "1-3 years",
+      "entry_strategy": "Phased investment over 3-6 months",
+      "unique_angle": "Growth potential in innovative segment",
+      "supporting_articles": [],
+      "market_analysis": {
+        "sector_sentiment": 0.35577071938315347,
+        "market_trend": "bullish",
+        "volatility_level": "moderate",
+        "key_drivers": [
+          "Ai momentum (mentioned 8 times)",
+          "Cloud momentum (mentioned 6 times)",
+          "Cybersecurity momentum (mentioned 5 times)"
+        ],
+        "risk_factors": [
+          "Moderate market volatility",
+          "Technology disruption",
+          "Cybersecurity threats"
+        ],
+        "opportunity_factors": [
+          "Strong technology sector sentiment",
+          "AI/ML adoption",
+          "Cloud migration"
+        ]
+      },
+      "policy_impact": {
+        "policy_type": "Digital India",
+        "description": "PLI scheme for IT hardware and semiconductor manufacturing",
+        "impact_level": "high",
+        "timeline": "12-18 months",
+        "beneficiaries": [
+          "Hardware manufacturers",
+          "Semiconductor companies",
+          "IT services"
+        ]
+      },
+      "risk_factors": [
+        "Market volatility in technology sector",
+        "Regulatory changes",
+        "Economic uncertainty",
+        "Competition intensity",
+        "Technology disruption"
+      ],
+      "opportunity_factors": [
+        "Strong growth potential in technology",
+        "Government policy support",
+        "Market expansion opportunities",
+        "Innovation potential",
+        "Strategic partnerships"
+      ],
+      "grpo_weight": 0.6114645733503412,
+      "grpo_p_weight": 0.3885354266496588,
+      "blending_strategy": "confidence_weighted",
+      "comprehensive_reasoning": "Based on comprehensive analysis of the technology sector, we recommend invest due to:\n        \n        1. Market Conditions: bullish sentiment with moderate volatility\n        2. Policy Support: PLI scheme for IT hardware and semiconductor manufacturing with high impact\n        3. Company Strength: 0 strong companies identified with confidence scores []\n        4. News Evidence: 0 supporting articles with positive sentiment\n        5. Strategy Alignment: sector_rotation approach optimized for current market conditions",
+      "market_context": "The technology sector is currently experiencing bullish conditions \n        with key drivers including Ai momentum (mentioned 8 times), Cloud momentum (mentioned 6 times). \n        Government policies are supportive with PLI scheme for IT hardware and semiconductor manufacturing.",
+      "investment_thesis": "Our investment thesis is based on invest in technology because:\n        - Market sentiment is bullish\n        - Policy environment is favorable\n        - Strong companies available for investment\n        - Risk-reward ratio is attractive",
+      "what_makes_this_different": "This recommendation differs from others because it uses a sector_rotation strategy,\n        focuses on technology sector, and considers 0 pieces of supporting evidence.",
+      "competitive_advantage": "Competitive advantages include early mover advantage in technology,\n        government policy support, and strong market fundamentals.",
+      "market_timing": "Market timing is favorable due to bullish sentiment,\n        policy announcements, and current market conditions."
+    }
+  ]
+}

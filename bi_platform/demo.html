@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid GRPO-Personalization Framework | Interactive Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Warm Neutral Harmony" -->
+    <!-- Application Structure Plan: A thematic, non-linear dashboard structure is used to transform the dense report into an exploratory experience. The flow is: Header for navigation -> Section 1 (The Core Problem) -> Section 2 (About the Research) -> Section 3 (Our Solution) -> Section 4 (System Architecture) -> Section 5 (Interactive Demo) -> Section 6 (Evaluation). This structure prioritizes user engagement and understanding by breaking down complex information into digestible, interactive modules. -->
+    <!-- Visualization & Content Choices: 
+        - The Problem: Goal=Compare -> Method=Side-by-side cards (HTML/CSS) -> Interaction=None -> Justification=Clearly contrasts the two extremes.
+        - About Research: Goal=Inform -> Method=Formatted text in cards (HTML/CSS) -> Interaction=None -> Justification=Provides detailed context for interested users.
+        - The Solution: Goal=Organize/Interact -> Method=Interactive slider and text blocks (HTML/JS) -> Interaction=User drags slider -> Justification=Makes the abstract concept of 'arbitration' tangible.
+        - Architecture: Goal=Organize -> Method=Clickable flowchart (HTML/JS) -> Interaction=Clicking a stage reveals details -> Justification=Simplifies a complex process flow.
+        - Use Case Demo: Goal=Demonstrate -> Method=Dynamic input form (HTML/JS) -> Interaction=User types a query, clicks generate -> Gemini API simulates analysis -> Justification=Provides a live demonstration.
+        - Evaluation: Goal=Compare/Inform -> Method=Grouped Bar Chart (Chart.js/Canvas) -> Interaction=Hover for tooltips -> Justification=Engaging data comparison.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8; /* Warm off-white */
+            color: #383838;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+            padding-bottom: 4px;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #D97706; /* Amber-600 */
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #D97706;
+            transition: width 0.3s ease;
+        }
+        .nav-link.active::after, .nav-link:hover::after {
+            width: 100%;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #F3F4F6;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -4px rgba(0,0,0,0.07);
+        }
+        .btn {
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background-color: #C2410C; /* Orange-700 */
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #9A3412; /* Orange-800 */
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #4B5563; /* Gray-600 */
+        }
+        .section-subtitle {
+            font-size: 1.125rem;
+            color: #6B7280; /* Gray-500 */
+            max-width: 48rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .architecture-step {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .architecture-step:hover, .architecture-step.active {
+            border-color: #D97706;
+            transform: scale(1.05);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 450px;
+            max-height: 50vh;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-gray-800">GRPO Framework</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#problem" class="nav-link active" data-section="problem">The Problem</a>
+                        <a href="#research" class="nav-link" data-section="research">About The Research</a>
+                        <a href="#solution" class="nav-link" data-section="solution">Our Solution</a>
+                        <a href="#architecture" class="nav-link" data-section="architecture">Architecture</a>
+                        <a href="#demo" class="nav-link" data-section="demo">Interactive Demo</a>
+                        <a href="#evaluation" class="nav-link" data-section="evaluation">Evaluation</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="problem" class="app-section py-16 sm:py-24 text-center">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="section-title">The Core Challenge in Business Intelligence</h2>
+                <p class="section-subtitle mt-4">Modern BI systems face a critical paradox: recommendations are either too generic to be useful or so personalized they ignore market realities. Our framework is designed to solve this fundamental tension.</p>
+                <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                    <div class="card p-8">
+                        <div class="flex items-center">
+                            <span class="text-4xl">👥</span>
+                            <h3 class="ml-4 text-2xl font-semibold text-gray-800">Too Generic: The "One-Size-Fits-All" Trap</h3>
+                        </div>
+                        <p class="mt-4 text-gray-600">Traditional tools provide insights that lack personal relevance, ignoring an individual's unique capital, risk tolerance, and goals.</p>
+                        <ul class="mt-6 space-y-3">
+                            <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">●</span><span><strong class="font-semibold">Entrepreneurs</strong> receive market research that doesn't fit their niche.</span></li>
+                            <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">●</span><span><strong class="font-semibold">Investors</strong> are shown identical portfolios, regardless of their financial aims.</span></li>
+                            <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">●</span><span><strong class="font-semibold">Analysts</strong> get standard reports that miss industry-specific nuances.</span></li>
+                        </ul>
+                    </div>
+                    <div class="card p-8">
+                        <div class="flex items-center">
+                            <span class="text-4xl">🎯</span>
+                            <h3 class="ml-4 text-2xl font-semibold text-gray-800">Too Personalized: The "Filter Bubble" Risk</h3>
+                        </div>
+                        <p class="mt-4 text-gray-600">Hyper-personalized systems can create a dangerous echo chamber, ignoring macroeconomic signals and broader market trends.</p>
+                        <ul class="mt-6 space-y-3">
+                            <li class="flex items-start"><span class="text-orange-700 mr-3 mt-1">●</span><span><strong class="font-semibold">Entrepreneurs</strong> might pursue a niche idea that has no real market demand.</span></li>
+                            <li class="flex items-start"><span class="text-orange-700 mr-3 mt-1">●</span><span><strong class="font-semibold">Investors</strong> may be pushed towards trendy but fundamentally unsound assets.</span></li>
+                            <li class="flex items-start"><span class="text-orange-700 mr-3 mt-1">●</span><span><strong class="font-semibold">Analysts</strong> could miss crucial cross-sector correlations and systemic risks.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="research" class="app-section hidden py-16 sm:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">About The Research</h2>
+                    <p class="section-subtitle mt-4">This project introduces a novel framework for Business Intelligence that intelligently balances personalized advice with market-valid insights. Below is an overview of the core concepts.</p>
+                </div>
+                <div class="mt-12 max-w-4xl mx-auto space-y-8">
+                    <div class="card p-8">
+                        <h3 class="text-2xl font-semibold text-gray-800">Executive Summary</h3>
+                        <p class="mt-4 text-gray-600">This research proposes a novel <strong>Hybrid GRPO-Personalization Framework</strong> for Business Intelligence systems. The core innovation is a dual-agent reinforcement learning architecture that combines a market-aligned agent (GRPO) with a personalized agent (GRPO-P), arbitrated by a learned controller. The system targets entrepreneurs, investors, and analysts by providing data-driven, actionable recommendations that are both personally relevant and grounded in market reality.</p>
+                    </div>
+                    <div class="card p-8">
+                        <h3 class="text-2xl font-semibold text-gray-800">The Dual-Agent Innovation</h3>
+                        <p class="mt-4 text-gray-600">The framework's primary contribution is its use of two specialized AI agents that work in tandem to produce a superior, blended recommendation. Each agent has a distinct objective:</p>
+                        
+                        <div class="mt-6 border-t pt-6">
+                            <h4 class="text-xl font-semibold text-blue-800">GRPO Agent: The Voice of the Market</h4>
+                            <p class="mt-2 text-gray-600">The **Group Relative Policy Optimization (GRPO)** agent is designed to provide market wisdom. It analyzes broad economic data, industry trends, and the behavior of successful actors in the market to generate conservative, robust, and trend-following recommendations.</p>
+                            <p class="mt-2 text-gray-600"><strong class="font-semibold">Example:</strong> During a period of high market volatility, the GRPO agent would likely recommend investing in stable, large-cap companies with strong fundamentals or diversifying into government bonds, as this aligns with a risk-averse market consensus.</p>
+                        </div>
+
+                        <div class="mt-6 border-t pt-6">
+                            <h4 class="text-xl font-semibold text-purple-800">GRPO-P Agent: The Personal Advisor</h4>
+                            <p class="mt-2 text-gray-600">The **Guided Reinforcement with Preference Optimization (GRPO-P)** agent focuses entirely on the individual user. It learns their specific goals, risk tolerance, capital constraints, and preferences to generate highly personalized, often more creative and opportunistic, recommendations.</p>
+                            <p class="mt-2 text-gray-600"><strong class="font-semibold">Example:</strong> For a young entrepreneur with a high-risk tolerance and expertise in tech, the GRPO-P agent might identify a niche opportunity in an emerging technology sector, even if the broader market hasn't recognized its potential yet.</p>
+                        </div>
+
+                        <div class="mt-6 border-t pt-6">
+                            <h4 class="text-xl font-semibold text-green-700">How They Contribute Together</h4>
+                            <p class="mt-2 text-gray-600">Neither agent is sufficient on its own. The framework's magic lies in the **Learned Arbitration Controller**, which intelligently blends their outputs. It assesses the context (e.g., market conditions, user profile) to decide how much weight to give each agent.</p>
+                             <p class="mt-2 text-gray-600"><strong class="font-semibold">Example of Contribution:</strong> For the young entrepreneur in a volatile market, the final recommendation wouldn't be just "invest in bonds" (GRPO) or "go all-in on a risky startup" (GRPO-P). Instead, the controller might suggest a balanced strategy: "Secure a foundational business line in a stable tech service (GRPO's influence) while dedicating a smaller portion of capital to developing the innovative, high-risk product (GRPO-P's influence)." This provides a practical path that mitigates risk while still pursuing personalized, high-growth opportunities.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solution" class="app-section hidden py-16 sm:py-24">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="section-title">A Dual-Agent Framework for Balanced Insights</h2>
+                <p class="section-subtitle mt-4">Our solution employs two complementary AI agents: one focused on market wisdom and the other on personal relevance. A smart controller dynamically blends their outputs for the optimal recommendation.</p>
+                <div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                    <div class="card p-6 text-left h-full">
+                        <h4 class="text-xl font-bold text-center text-blue-800">GRPO Agent: Market Wisdom</h4>
+                        <p class="text-center text-sm text-gray-500 mt-1">Optimizes for macro-level consistency</p>
+                        <div class="mt-4">
+                            <strong class="text-green-600">Strengths:</strong>
+                            <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                                <li>Conservative, trend-following behavior</li>
+                                <li>Highly aligned with economic conditions</li>
+                                <li>Robust in volatile markets</li>
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <strong class="text-red-600">Weaknesses:</strong>
+                            <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                                <li>Poor personalization</li>
+                                <li>Bland, one-size-fits-many advice</li>
+                                <li>May miss emerging opportunities</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6 text-center">
+                        <h4 class="text-xl font-bold text-orange-700">Learned Arbitration Controller</h4>
+                        <p class="text-sm text-gray-500 mt-1">Dynamically balances the two agents</p>
+                        <div class="mt-4">
+                            <label for="lambda-slider" class="block text-sm font-medium text-gray-700">Arbitration Weight (λ)</label>
+                            <input id="lambda-slider" type="range" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Personalized</span>
+                            <span>Market-Aligned</span>
+                        </div>
+                        <div class="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                            <p class="font-semibold text-gray-800">Final Recommendation:</p>
+                            <p id="final-recommendation-text" class="text-gray-600 mt-1">A balanced blend of both strategies.</p>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 text-left h-full">
+                        <h4 class="text-xl font-bold text-center text-purple-800">GRPO-P Agent: Personal Relevance</h4>
+                        <p class="text-center text-sm text-gray-500 mt-1">Maximizes individual user utility</p>
+                        <div class="mt-4">
+                            <strong class="text-green-600">Strengths:</strong>
+                            <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                                <li>Excellent personalization</li>
+                                <li>Exploratory, opportunistic behavior</li>
+                                <li>Adapts to individual preferences</li>
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <strong class="text-red-600">Weaknesses:</strong>
+                            <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                                <li>Less robust in volatile markets</li>
+                                <li>May overreact to user noise</li>
+                                <li>Risk of macro-misalignment</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="app-section hidden py-16 sm:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="section-title">End-to-End System Architecture</h2>
+                <p class="section-subtitle mt-4">Our platform follows a sophisticated pipeline from user input to final recommendation. Click on each step to learn more about its function.</p>
+                <div class="mt-12">
+                    <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4">
+                        <div class="architecture-step card p-4 w-48 text-center active" data-arch-id="1">
+                            <div class="text-3xl">📥</div>
+                            <h5 class="font-semibold mt-2">1. Input Layer</h5>
+                        </div>
+                        <div class="text-2xl text-gray-400 font-light">→</div>
+                        <div class="architecture-step card p-4 w-48 text-center" data-arch-id="2">
+                            <div class="text-3xl">💾</div>
+                            <h5 class="font-semibold mt-2">2. Data Aggregation</h5>
+                        </div>
+                        <div class="text-2xl text-gray-400 font-light">→</div>
+                        <div class="architecture-step card p-4 w-48 text-center" data-arch-id="3">
+                            <div class="text-3xl">🧠</div>
+                            <h5 class="font-semibold mt-2">3. Dual Agents</h5>
+                        </div>
+                        <div class="text-2xl text-gray-400 font-light">→</div>
+                        <div class="architecture-step card p-4 w-48 text-center" data-arch-id="4">
+                            <div class="text-3xl">⚖️</div>
+                            <h5 class="font-semibold mt-2">4. Arbitration</h5>
+                        </div>
+                        <div class="text-2xl text-gray-400 font-light">→</div>
+                        <div class="architecture-step card p-4 w-48 text-center" data-arch-id="5">
+                            <div class="text-3xl">📄</div>
+                            <h5 class="font-semibold mt-2">5. Output</h5>
+                        </div>
+                    </div>
+                    <div id="architecture-details" class="mt-8 card p-8 text-left max-w-4xl mx-auto">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="app-section hidden py-16 sm:py-24">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="section-title">✨ Interactive Demo Powered by Gemini</h2>
+                <p class="section-subtitle mt-4">Describe a business idea, investment goal, or market scenario below. The Gemini API will simulate the dual-agent framework to generate a unique, real-time recommendation for you.</p>
+                <div class="mt-8 max-w-2xl mx-auto">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="demo-input" class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500" placeholder="e.g., 'Low-risk investment in sustainable AI'">
+                        <button id="generate-demo-btn" class="btn btn-primary w-full sm:w-auto">
+                            <span class="btn-text">Generate</span>
+                            <div class="spinner hidden ml-2"></div>
+                        </button>
+                    </div>
+                </div>
+                <div id="demo-container" class="mt-12 max-w-5xl mx-auto text-left">
+                    <div id="demo-placeholder" class="text-center text-gray-500 py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p>Enter a query above and click "Generate" to begin the simulation.</p>
+                    </div>
+                    <div id="demo-content">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="evaluation" class="app-section hidden py-16 sm:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="section-title">Expected Performance & Evaluation</h2>
+                <p class="section-subtitle mt-4">Our framework is projected to significantly outperform traditional models by achieving high scores in user satisfaction, market alignment, and resilience simultaneously.</p>
+                <div class="mt-12">
+                    <div class="chart-container">
+                        <canvas id="evaluationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-24">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <p>Hybrid GRPO-Personalization Framework for Business Intelligence</p>
+            <p class="text-sm text-gray-400 mt-2">An interactive overview of a novel research project.</p>
+        </div>
+    </footer>
+
+    <div id="summary-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 relative">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800">&times;</button>
+            <h3 class="text-2xl font-bold text-gray-800">✨ AI-Generated Executive Summary</h3>
+            <div id="summary-content" class="mt-4 text-gray-600 space-y-4">
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const appState = {
+        activeSection: 'problem',
+        sections: ['problem', 'research', 'solution', 'architecture', 'demo', 'evaluation'],
+        lastRecommendation: null,
+        architectureData: {
+            '1': { title: '1. Input Layer: Multi-Modal User Interface', content: 'The system accepts user goals through two methods: natural language queries (e.g., "Low-risk investment in sustainable AI") and a guided filtering system. This dual approach captures both high-level intent and specific constraints like capital, risk appetite, and location, creating a rich, structured vector representing the user\'s needs.' },
+            '2': { title: '2. Data Aggregation Layer', content: 'Real-time data is ingested from multiple trusted sources, including government APIs, financial market feeds, news outlets, and industry reports. A robust pipeline cleans, normalizes, and enriches this data to provide a comprehensive, up-to-the-minute view of the market context relevant to the user\'s query.' },
+            '3': { title: '3. Dual-Agent Processing', content: 'The user intent vector and market data are fed to two specialized AI agents. The **GRPO Agent** analyzes the data from a market-wide perspective to find robust, trend-following opportunities. Simultaneously, the **GRPO-P Agent** focuses on the user\'s specific profile to find highly personalized, and potentially more novel, opportunities.' },
+            '4': { title: '4. Learned Arbitration Controller', content: 'This is the core innovation. A Contextual Bandit model analyzes the outputs from both agents, considering factors like their level of disagreement (policy divergence), market volatility, and the user\'s profile. It then calculates an optimal blend weight (λ) to decide how much influence each agent should have on the final recommendation.' },
+            '5': { title: '5. Output Generation Layer', content: 'The recommendations from the two agents are synthesized based on the arbitration weight. The final output is a comprehensive, actionable report that includes an executive summary, market analysis, opportunity assessment, and risk mitigation strategies, all tailored to the user but grounded in market reality.<br><br><button id="generate-summary-btn" class="btn btn-primary mt-4" disabled>✨ Generate Executive Summary</button>' }
+        },
+        evaluationChart: null,
+        evaluationData: {
+            labels: ['Our Dual GRPO', 'GRPO Only', 'GRPO-P Only', 'Human Expert', 'Random'],
+            datasets: [
+                {
+                    label: 'User Satisfaction',
+                    data: [88, 61, 83, 85, 25],
+                    backgroundColor: 'rgba(194, 65, 12, 0.7)',
+                    borderColor: 'rgba(194, 65, 12, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Market Alignment',
+                    data: [82, 89, 55, 75, 50],
+                    backgroundColor: 'rgba(217, 119, 6, 0.7)',
+                    borderColor: 'rgba(217, 119, 6, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'System Resilience',
+                    data: [90, 95, 45, 65, 30],
+                    backgroundColor: 'rgba(75, 85, 99, 0.7)',
+                    borderColor: 'rgba(75, 85, 99, 1)',
+                    borderWidth: 1
+                }
+            ]
+        }
+    };
+
+    const callGeminiAPI = async (prompt, isJson = false) => {
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {}
+        };
+
+        if (isJson) {
+            payload.generationConfig.responseMimeType = "application/json";
+        }
+
+        let response;
+        let retries = 3;
+        let delay = 1000;
+
+        while (retries > 0) {
+            try {
+                response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Invalid response structure from API");
+                    }
+                } else {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+            } catch (error) {
+                retries--;
+                if (retries === 0) {
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+        }
+    };
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const appSections = document.querySelectorAll('.app-section');
+
+    const showSection = (sectionId) => {
+        appState.activeSection = sectionId;
+        appSections.forEach(section => section.classList.toggle('hidden', section.id !== sectionId));
+        navLinks.forEach(link => link.classList.toggle('active', link.dataset.section === sectionId));
+        window.location.hash = sectionId;
+
+        if (sectionId === 'evaluation' && !appState.evaluationChart) {
+            renderEvaluationChart();
+        }
+    };
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection(e.target.dataset.section);
+        });
+    });
+
+    const initialHash = window.location.hash.substring(1);
+    showSection(appState.sections.includes(initialHash) ? initialHash : 'problem');
+
+    document.getElementById('lambda-slider').addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        let text = 'A balanced blend of both strategies.';
+        if (value > 75) text = 'Strongly favors Market-Aligned strategy.';
+        else if (value > 60) text = 'Leans towards Market-Aligned strategy.';
+        else if (value < 25) text = 'Strongly favors Personalized strategy.';
+        else if (value < 40) text = 'Leans towards Personalized strategy.';
+        document.getElementById('final-recommendation-text').textContent = text;
+    });
+
+    const archSteps = document.querySelectorAll('.architecture-step');
+    const archDetailsContainer = document.getElementById('architecture-details');
+    
+    const updateArchDetails = (id) => {
+        const details = appState.architectureData[id];
+        archDetailsContainer.innerHTML = `<h4 class="text-xl font-bold text-gray-800">${details.title}</h4><p class="mt-4 text-gray-600">${details.content}</p>`;
+        
+        const summaryBtn = archDetailsContainer.querySelector('#generate-summary-btn');
+        if (summaryBtn) {
+            summaryBtn.disabled = !appState.lastRecommendation;
+        }
+
+        archDetailsContainer.classList.remove('fade-in');
+        void archDetailsContainer.offsetWidth;
+        archDetailsContainer.classList.add('fade-in');
+        archSteps.forEach(step => step.classList.toggle('active', step.dataset.archId === id));
+    };
+
+    archSteps.forEach(step => step.addEventListener('click', (e) => updateArchDetails(e.currentTarget.dataset.archId)));
+    updateArchDetails('1');
+    
+    const demoInput = document.getElementById('demo-input');
+    const generateDemoBtn = document.getElementById('generate-demo-btn');
+    const demoPlaceholder = document.getElementById('demo-placeholder');
+    const demoContent = document.getElementById('demo-content');
+
+    generateDemoBtn.addEventListener('click', async () => {
+        const query = demoInput.value.trim();
+        if (!query) {
+            demoContent.innerHTML = `<div class="text-center text-red-500">Please enter a query.</div>`;
+            return;
+        }
+
+        const btnText = generateDemoBtn.querySelector('.btn-text');
+        const spinner = generateDemoBtn.querySelector('.spinner');
+        
+        generateDemoBtn.disabled = true;
+        btnText.textContent = 'Generating...';
+        spinner.classList.remove('hidden');
+        demoPlaceholder.classList.add('hidden');
+        demoContent.innerHTML = `<div class="text-center text-gray-500 py-12">Simulating dual-agent analysis...</div>`;
+        appState.lastRecommendation = null;
+        updateArchDetails(document.querySelector('.architecture-step.active').dataset.archId);
+
+        const prompt = `You are simulating a dual-agent business intelligence framework. A user has provided the following query: "${query}".
+        
+        Your task is to generate three distinct recommendations:
+        1.  A "GRPO (Market)" recommendation: This should be conservative, safe, trend-following, and based on broad market data.
+        2.  A "GRPO-P (Personal)" recommendation: This should be more personalized, creative, opportunistic, and tailored to the potential implied user behind the query (e.g., their likely risk tolerance, capital, goals).
+        3.  A "Final Blended Recommendation": This should be a thoughtful synthesis of the first two, providing an actionable, balanced strategy that manages risk while capturing opportunity.
+
+        Provide the output as a single JSON object with three keys: "grpo_market", "grpo_personal", and "final_blended". Each key's value should be a string containing the recommendation.`;
+
+        try {
+            const responseText = await callGeminiAPI(prompt, true);
+            const data = JSON.parse(responseText);
+            appState.lastRecommendation = data.final_blended;
+
+            const html = `
+                <div class="card p-6 sm:p-8 fade-in">
+                    <h3 class="text-2xl font-bold text-gray-800">Analysis for: "${query}"</h3>
+                    <div class="mt-6 space-y-6">
+                        <div>
+                            <h4 class="font-semibold text-lg text-orange-700">Dual-Agent Analysis</h4>
+                            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                                    <h5 class="font-semibold text-blue-800">GRPO (Market)</h5>
+                                    <p class="mt-1 text-gray-700">${data.grpo_market}</p>
+                                </div>
+                                <div class="p-4 border border-purple-200 bg-purple-50 rounded-lg">
+                                    <h5 class="font-semibold text-purple-800">GRPO-P (Personal)</h5>
+                                    <p class="mt-1 text-gray-700">${data.grpo_personal}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg text-green-700">Final Blended Recommendation</h4>
+                            <p class="mt-2 p-4 bg-green-50 border border-green-200 rounded-lg text-gray-800">${data.final_blended}</p>
+                        </div>
+                    </div>
+                </div>`;
+            demoContent.innerHTML = html;
+        } catch (error) {
+            demoContent.innerHTML = `<div class="text-center text-red-500 p-8 card">Sorry, something went wrong while generating the recommendation. Please try again.</div>`;
+        } finally {
+            generateDemoBtn.disabled = false;
+            btnText.textContent = 'Generate';
+            spinner.classList.add('hidden');
+            updateArchDetails(document.querySelector('.architecture-step.active').dataset.archId);
+        }
+    });
+
+    const summaryModal = document.getElementById('summary-modal');
+    const summaryContent = document.getElementById('summary-content');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    archDetailsContainer.addEventListener('click', async (e) => {
+        if (e.target.id === 'generate-summary-btn' && !e.target.disabled) {
+            summaryModal.classList.remove('hidden');
+            summaryModal.classList.add('flex');
+            summaryContent.innerHTML = '<div class="flex items-center justify-center p-8"><div class="spinner !border-gray-400 !border-t-gray-700 w-8 h-8"></div><p class="ml-4">Generating summary...</p></div>';
+
+            const prompt = `Based on the following business/investment recommendation, write a brief, one-paragraph executive summary for a busy stakeholder. Focus on the core strategy and expected outcome. Recommendation: "${appState.lastRecommendation}"`;
+            
+            try {
+                const summary = await callGeminiAPI(prompt);
+                summaryContent.innerHTML = `<p>${summary.replace(/\n/g, '<br>')}</p>`;
+            } catch (error) {
+                summaryContent.innerHTML = `<p class="text-red-500">Could not generate summary. Please try again.</p>`;
+            }
+        }
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+        summaryModal.classList.add('hidden');
+        summaryModal.classList.remove('flex');
+    });
+
+    const renderEvaluationChart = () => {
+        const ctx = document.getElementById('evaluationChart').getContext('2d');
+        appState.evaluationChart = new Chart(ctx, {
+            type: 'bar',
+            data: appState.evaluationData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: true, text: 'Comparative Performance of Recommendation Models', font: { size: 18 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label || ''}: ${context.parsed.y !== null ? context.parsed.y + '%' : ''}`
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Performance Score (%)' } }
+                }
+            }
+        });
+    };
+});
+</script>
+</body>
+</html>
